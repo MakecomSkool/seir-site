@@ -58,13 +58,24 @@ const AUTOPLAY_OUT = 0.8;
 const PLAY_RETRY_MS = 1500;
 
 // Тексты сцены уходят быстрее кадра и слегка съезжают вверх (build.md, шаг 4).
-// visibility прячет невидимую копию из hit-testing: без этого прозрачная CTA
-// продолжала бы ловить клики.
-function applyCopy(el: HTMLElement, d: number) {
-  const opacity = clamp01(1 - Math.abs(d) * 2.1);
+// У сцен с axisHold подпись живёт внутри пролёта и гаснет до кадра шва —
+// иначе на стыке цепи горели бы оба заголовка сразу. visibility прячет
+// невидимую копию из hit-testing: прозрачная CTA не должна ловить клики.
+function applyCopy(el: HTMLElement, d: number, holdFrom: number, holdTo: number) {
+  let opacity: number;
+  let shift: number;
+  if (holdTo > holdFrom) {
+    opacity = clamp01(
+      Math.min((d - holdFrom - 0.04) / 0.12, (holdTo - 0.14 - d) / 0.12),
+    );
+    shift = 0;
+  } else {
+    opacity = clamp01(1 - Math.abs(d) * 2.1);
+    shift = d * -34;
+  }
   el.style.opacity = String(opacity);
   el.style.visibility = opacity <= 0 ? "hidden" : "visible";
-  el.style.transform = `translateY(${(d * -34).toFixed(1)}px)`;
+  el.style.transform = `translateY(${shift.toFixed(1)}px)`;
 }
 
 const clamp01 = (value: number) => Math.min(1, Math.max(0, value));
@@ -361,7 +372,7 @@ export default function FilmStage({
           const dAxis = d < seg.holdFrom ? d - seg.holdFrom : d > seg.holdTo ? d - seg.holdTo : 0;
           seg.lastD = d;
           applyAxis(seg.el, seg.axis, dAxis);
-          if (seg.copy) applyCopy(seg.copy, dAxis);
+          if (seg.copy) applyCopy(seg.copy, d, seg.holdFrom, seg.holdTo);
 
           const video = seg.video;
           if (video) {
