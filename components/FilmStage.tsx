@@ -228,6 +228,10 @@ export default function FilmStage({
           sibling instanceof HTMLElement && sibling.hasAttribute("data-scene-copy")
             ? sibling
             : null,
+        // Моно-строка перебивки: появляется с отставанием, когда чернота
+        // уже почти непрозрачна — иначе просвечивает сквозь текст сцены
+        cardLabel:
+          el.dataset.seg === "card" ? el.querySelector<HTMLElement>("p") : null,
         video: el.querySelector<HTMLVideoElement>("video"),
         overlays: Array.from(
           el.querySelectorAll<HTMLElement>("[data-film-overlay]"),
@@ -366,6 +370,11 @@ export default function FilmStage({
           );
           seg.el.style.opacity = String(opacity);
           seg.el.style.visibility = opacity <= 0 ? "hidden" : "visible";
+          if (seg.cardLabel) {
+            seg.cardLabel.style.opacity = String(
+              clamp01((opacity - 0.55) / 0.4),
+            );
+          }
         } else {
           // Окно удержания оси: внутри [holdFrom, holdTo] сцена стоит в покое,
           // осевые формулы применяются к выходу за окно (проезд акта II).

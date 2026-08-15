@@ -16,13 +16,21 @@ import {
 // в эпилоге контур виден с первого кадра, огней сразу много и они ярче.
 
 const RANDOM_POINTS = 120;
-// Загорание: старт каскада и растяжка задержек по прогрессу сцены — при живом
-// скролле пролога даёт стаггер порядка сотни миллисекунд на город.
-// Контур при этом виден с первого кадра: прячет карту только фейд самой сцены.
+// Загорание: каскад завершается ДО начала спуска (последняя треть ролика) —
+// страна успевает зажечься, пока камера ещё на орбите.
 const IGNITE_START = 0.02;
-const IGNITE_SPREAD = 0.55;
+const IGNITE_SPREAD = 0.35;
+const IGNITE_RAMP = 4.5;
+
+// Спуск: карта растёт навстречу камере, уходит вниз и растворяется в облаках —
+// пролёт читается как видео, а не как наклейка поверх.
+const DIVE_FROM = 0.55;
+const DIVE_SPAN = 0.35;
+const FADE_FROM = 0.62;
+const FADE_SPAN = 0.2;
 
 const clamp01 = (value: number) => Math.min(1, Math.max(0, value));
+const easeIn = (t: number) => t * t;
 
 function mulberry32(seed: number) {
   return () => {
@@ -110,7 +118,9 @@ export default function UkraineMap({ lit = false, staticLit = false }: Props) {
         const on =
           lit || staticLit
             ? 1
-            : clamp01((progress - IGNITE_START - dot.delay * IGNITE_SPREAD) * 3);
+            : clamp01(
+                (progress - IGNITE_START - dot.delay * IGNITE_SPREAD) * IGNITE_RAMP,
+              );
         if (on <= 0.01) continue;
         const x = dot.x * scale;
         const y = dot.y * scale;
@@ -162,9 +172,30 @@ export default function UkraineMap({ lit = false, staticLit = false }: Props) {
 
     const node = root as HTMLDivElement & OverlayNode;
     node.filmOverlayUpdate = (frame: OverlayFrame) => {
-      // карта видна всегда — появлением и уходом управляет фейд самой сцены;
-      // по прогрессу движутся только огни
-      draw(lit ? 1 : Math.round(frame.progress * 500) / 500);
+      const progress = frame.progress;
+      let opacity: number;
+      let scale: number;
+      let shift: number;
+      if (lit) {
+        // Эпилог: камера взлетает из окна в орбиту — карта проявляется
+        // и «садится» на материк к финальному кадру
+        const t = clamp01((progress - 0.5) / 0.3);
+        const eased = 1 - (1 - t) * (1 - t);
+        opacity = t;
+        scale = 2.6 - 1.6 * eased;
+        shift = (1 - eased) * 60;
+        draw(1);
+      } else {
+        // Пролог: дрейф — карта лежит на материке; спуск — растёт навстречу,
+        // уходит вниз и тает в облаках до появления подстанции
+        const dive = easeIn(clamp01((progress - DIVE_FROM) / DIVE_SPAN));
+        opacity = 1 - clamp01((progress - FADE_FROM) / FADE_SPAN);
+        scale = 1 + dive * 1.9;
+        shift = dive * 70;
+        draw(Math.round(progress * 500) / 500);
+      }
+      root.style.opacity = opacity.toFixed(3);
+      root.style.transform = `translateY(${shift.toFixed(1)}%) perspective(1100px) rotateX(52deg) scale(${scale.toFixed(3)})`;
     };
 
     return () => {
@@ -188,6 +219,8 @@ export default function UkraineMap({ lit = false, staticLit = false }: Props) {
         aspectRatio: `${VIEW_W} / ${VIEW_H}`,
         transform: "perspective(1100px) rotateX(52deg)",
         transformOrigin: "50% 100%",
+        // в эпилоге карта проявляется по мере взлёта, в прологе видна сразу
+        opacity: lit && !staticLit ? 0 : 1,
       }}
     >
       <svg

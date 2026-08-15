@@ -59,7 +59,8 @@ for(i=0;i<n;i++){var e=els[i],d=p-i,k=e.getAttribute('data-seg'),a=e.getAttribut
 var hf=+(e.getAttribute('data-hold-from')||0),ht=+(e.getAttribute('data-hold-to')||0);
 var da=d<hf?d-hf:d>ht?d-ht:0;
 var o=0,t='',b=0;
-if(k==='card'){o=c(Math.min(1+d/0.35,(1-d)/0.5));}
+if(k==='card'){o=c(Math.min(1+d/0.35,(1-d)/0.5));
+var lb=e.querySelector('p');if(lb)lb.style.opacity=c((o-0.55)/0.4);}
 else if(a==='fall'){o=c(1-Math.abs(da)*1.35);t='scale('+(1+da*0.46)+')';b=(1-o)*7;}
 else if(a==='lateral'){o=c(1-Math.abs(da)*1.1);t='translateX('+(-da*100)+'vw) scale(1.04)';}
 else if(a==='rise'){o=c(1-Math.abs(da)*1.35);t='translateY('+(da*26)+'vh) scale('+(1-da*0.18)+')';b=(1-o)*5;}
