@@ -17,8 +17,9 @@ import {
 
 const RANDOM_POINTS = 120;
 // Загорание: старт каскада и растяжка задержек по прогрессу сцены — при живом
-// скролле пролога даёт стаггер порядка сотни миллисекунд на город
-const IGNITE_START = 0.08;
+// скролле пролога даёт стаггер порядка сотни миллисекунд на город.
+// Контур при этом виден с первого кадра: прячет карту только фейд самой сцены.
+const IGNITE_START = 0.02;
 const IGNITE_SPREAD = 0.55;
 
 const clamp01 = (value: number) => Math.min(1, Math.max(0, value));
@@ -68,8 +69,8 @@ function buildDots(mobile: boolean): Dot[] {
     dots.push({
       x,
       y,
-      r: 0.5 + rnd() * 1.1,
-      alpha: 0.3 + rnd() * 0.45,
+      r: 0.7 + rnd() * 1.2,
+      alpha: 0.4 + rnd() * 0.45,
       delay: 0.3 + rnd() * 0.7,
       glow: false,
     });
@@ -155,16 +156,14 @@ export default function UkraineMap({ lit = false, staticLit = false }: Props) {
     observer.observe(canvas);
 
     if (staticLit) {
-      root.style.opacity = "1";
       draw(1);
       return () => observer.disconnect();
     }
 
     const node = root as HTMLDivElement & OverlayNode;
     node.filmOverlayUpdate = (frame: OverlayFrame) => {
-      // контур проявляется с прогрессом; в эпилоге виден с первого кадра
-      const opacity = lit ? 1 : clamp01((frame.progress - 0.04) * 2.2);
-      root.style.opacity = opacity.toFixed(3);
+      // карта видна всегда — появлением и уходом управляет фейд самой сцены;
+      // по прогрессу движутся только огни
       draw(lit ? 1 : Math.round(frame.progress * 500) / 500);
     };
 
@@ -182,12 +181,13 @@ export default function UkraineMap({ lit = false, staticLit = false }: Props) {
       ref={rootRef}
       data-film-overlay=""
       aria-hidden
-      className="overlay-keep-mobile pointer-events-none absolute inset-x-0 bottom-[4%] mx-auto w-[min(58vw,900px)] max-[819px]:w-[86vw]"
+      // Сильный наклон кладёт плоскость на материк в нижней половине кадра;
+      // изгиб лимба в видео добивает иллюзию «на планете»
+      className="overlay-keep-mobile pointer-events-none absolute inset-x-0 bottom-[3%] mx-auto w-[min(52vw,820px)] max-[819px]:w-[88vw]"
       style={{
         aspectRatio: `${VIEW_W} / ${VIEW_H}`,
-        transform: "perspective(1200px) rotateX(12deg)",
+        transform: "perspective(1100px) rotateX(52deg)",
         transformOrigin: "50% 100%",
-        opacity: staticLit || lit ? 1 : 0,
       }}
     >
       <svg
@@ -195,12 +195,14 @@ export default function UkraineMap({ lit = false, staticLit = false }: Props) {
         className="ua-contour absolute inset-0 h-full w-full"
         preserveAspectRatio="xMidYMid meet"
       >
+        {/* лёгкая заливка суши, чтобы страна читалась как форма, а не нить */}
+        <path d={UKRAINE_PATH} fill="rgba(155, 220, 255, 0.05)" stroke="none" />
         <path
           d={UKRAINE_PATH}
           fill="none"
           stroke="var(--arc)"
-          strokeOpacity={lit || staticLit ? 0.65 : 0.5}
-          strokeWidth="1"
+          strokeOpacity={0.9}
+          strokeWidth="1.4"
           vectorEffect="non-scaling-stroke"
           strokeLinejoin="round"
         />
