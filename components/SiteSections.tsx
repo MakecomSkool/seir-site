@@ -58,12 +58,15 @@ export default function SiteSections() {
               className="w-[300px] shrink-0 snap-start rounded border border-white/20 p-6"
             >
               <p className="font-mono text-[22px] text-[var(--gold)]">{item.code}</p>
-              <h3 className="mt-4 min-h-[3em] text-[13px] font-medium uppercase tracking-[0.08em] text-[var(--ink)]">
+              <h3 className="mt-4 min-h-[2.5em] text-[13px] font-medium uppercase tracking-[0.08em] text-[var(--ink)]">
                 {item.title}
               </h3>
+              <p className="mt-2 min-h-[3em] text-[12px] leading-snug text-[var(--dim)]">
+                {item.lead}
+              </p>
               <ul className="mt-4 space-y-1 font-mono text-[12px] leading-relaxed text-[var(--dim)]">
-                {item.lines.map((line) => (
-                  <li key={line}>{line}</li>
+                {item.points.map((point) => (
+                  <li key={point}>{point}</li>
                 ))}
               </ul>
             </article>

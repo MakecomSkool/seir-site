@@ -1,5 +1,20 @@
 // SEIR — единый конфиг фильма. Сценарий: docs/film.md.
 // Все тексты, тайминги, цвета и пути к видео правятся только здесь.
+// Украинские названия номенклатуры, работ, фаз и экспертизы импортируются
+// из content/catalog.ts — единственного источника строк с сайта компании.
+// Из английских промптов film.md украинский текст не выводится никогда.
+
+import {
+  CATALOG,
+  EXPERTISE,
+  MAINTENANCE_ITEMS,
+  MAINTENANCE_WORKS,
+  PHASES,
+  REPAIR_EMERGENCY,
+  REPAIR_ITEMS,
+  SUPPLY_EXTRA,
+  SUPPLY_ITEMS,
+} from "@/content/catalog";
 
 export type ActId =
   | "prologue"
@@ -108,7 +123,7 @@ export const SECTIONS = {
       "«Стратегічні Енерго-Індустріальні Рішення» — постачання обладнання, " +
       "ремонт і модернізація для енергетики та промисловості. Працюємо з " +
       "електростанціями, підстанціями, промисловими та інфраструктурними " +
-      "об'єктами: від діагностики й аварійного відновлення до комплексних " +
+      "об’єктами: від діагностики й аварійного відновлення до комплексних " +
       "поставок під ключ.",
     counter: { value: "15+", caption: "років досвіду" },
   },
@@ -127,16 +142,16 @@ export const LEAD = {
   title: "Запит консультації",
   fields: {
     object: {
-      label: "Тип об'єкта",
-      placeholder: "Оберіть тип об'єкта",
+      label: "Тип об’єкта",
+      placeholder: "Оберіть тип об’єкта",
       options: [
         "Електростанція",
         "Підстанція та мережі",
         "Промислове підприємство",
-        "Інфраструктурний об'єкт",
+        "Інфраструктурний об’єкт",
         "Інше",
       ],
-      error: "Оберіть тип об'єкта зі списку — запит потрапить до профільного інженера",
+      error: "Оберіть тип об’єкта зі списку — запит потрапить до профільного інженера",
     },
     task: {
       label: "Задача",
@@ -185,7 +200,8 @@ export const FILM: Act[] = [
         eyebrow: "Стратегічні Енерго-Індустріальні Рішення",
         titleMain: "За кожним вогнем",
         titleAccent: "стоїть обладнання",
-        overlay: "cityLights",
+        // overlay "cityLights" вернётся на шаге 5: огни лягут на материк
+        // реального кадра орбиты
         cta: { label: "Подивитись, як ми працюємо", action: "catalog" },
       },
     ],
@@ -207,27 +223,11 @@ export const FILM: Act[] = [
         eyebrow: "01",
         titleMain: "Технічне",
         titleAccent: "обслуговування",
-        body: [
-          "силові трансформатори",
-          "розподільчі пристрої КРУ і КРУН",
-          "кабельні системи",
-          "турбінне обладнання",
-          "допоміжні енергетичні системи",
-          "релейний захист",
-        ],
-        services: [
-          "діагностика та випробування",
-          "пусконалагоджувальні роботи",
-          "технічний аудит",
-        ],
+        body: MAINTENANCE_ITEMS,
+        services: MAINTENANCE_WORKS,
         cats: ["CAT-03", "CAT-07"],
-        // Измерительные кабели от аппаратуры к вводам трансформатора
-        overlay: "flow",
-        flowPaths: [
-          "M -40 620 C 300 560 520 650 820 605 C 1120 560 1380 645 1660 595",
-          "M -40 705 C 360 665 640 725 980 685 C 1260 655 1480 705 1660 675",
-          "M 1240 -40 C 1225 240 1230 480 1245 940",
-        ],
+        // overlay "flow" вернётся на шаге 5: траектория линии тока ляжет
+        // по проводам реального кадра
       },
       {
         id: "i2",
@@ -238,16 +238,9 @@ export const FILM: Act[] = [
         eyebrow: "02",
         titleMain: "Модернізація",
         titleAccent: "та ремонт",
-        body: [
-          "капітальний ремонт",
-          "реконструкція об'єктів",
-          "модернізація систем та вузлів",
-          "заміна обладнання",
-          "підвищення енергоефективності",
-          "оптимізація процесів",
-        ],
+        body: REPAIR_ITEMS,
         // Сильнейший аргумент, рендерится отдельным блоком крупнее (см. docs/film.md, I.2).
-        services: ["Відновлення після аварій", "Усунення технічних несправностей"],
+        services: REPAIR_EMERGENCY,
         counter: { from: "0,00 с", to: "0,12 с", caption: "час відновлення живлення" },
         cats: ["CAT-03", "CAT-05"],
         cta: { label: "Аварійне відновлення", action: "lead" },
@@ -261,20 +254,8 @@ export const FILM: Act[] = [
         eyebrow: "03",
         titleMain: "Постачання",
         titleAccent: "обладнання",
-        // Номенклатура CAT-01..09, выведена из английских промптов акта II
-        // (украинских названий в docs нет). Сверить с content/catalog.ts на шаге 7.
-        body: [
-          "кабельно-провідникова продукція",
-          "кабельна арматура та ізоляційні матеріали",
-          "силові трансформатори",
-          "турбінне обладнання",
-          "розподільчі пристрої КРУ і КРУН",
-          "високовольтні вимикачі",
-          "контрольно-вимірювальні прилади",
-          "трубопровідна арматура",
-          "насосне та теплообмінне обладнання",
-        ],
-        services: ["Імпорт та підбір обладнання", "Логістика та супровід поставок"],
+        body: SUPPLY_ITEMS,
+        services: SUPPLY_EXTRA,
         cats: ["CAT-01", "CAT-02", "CAT-03", "CAT-04"],
       },
     ],
@@ -304,17 +285,7 @@ export const FILM: Act[] = [
         eyebrow: "",
         titleMain: "",
         titleAccent: "",
-        cats: [
-          "CAT-01",
-          "CAT-02",
-          "CAT-03",
-          "CAT-04",
-          "CAT-05",
-          "CAT-06",
-          "CAT-07",
-          "CAT-08",
-          "CAT-09",
-        ],
+        cats: CATALOG.map((item) => item.code),
       },
     ],
   },
@@ -332,9 +303,10 @@ export const FILM: Act[] = [
         posterSrc: "/poster/auto_iii1.webp",
         duration: 6,
         scrollVh: 90,
-        eyebrow: "01",
+        eyebrow: EXPERTISE[0].num,
         titleMain: "Генерація",
         titleAccent: "енергії",
+        body: EXPERTISE[0].points,
       },
       {
         id: "iii2",
@@ -342,16 +314,12 @@ export const FILM: Act[] = [
         posterSrc: "/poster/auto_iii2.webp",
         duration: 6,
         scrollVh: 90,
-        eyebrow: "02",
+        eyebrow: EXPERTISE[1].num,
         titleMain: "Підстанції",
         titleAccent: "та мережі",
-        // ЛЭП уходят от подстанции в три стороны к горизонту
-        overlay: "flow",
-        flowPaths: [
-          "M 800 640 C 560 545 300 470 -60 415",
-          "M 800 640 C 808 430 804 250 800 -60",
-          "M 800 640 C 1040 545 1300 470 1660 415",
-        ],
+        body: EXPERTISE[1].points,
+        // overlay "flow" вернётся на шаге 5: линия тока пройдёт по проводам
+        // ЛЭП реального кадра
       },
       {
         id: "iii3",
@@ -359,9 +327,10 @@ export const FILM: Act[] = [
         posterSrc: "/poster/auto_iii3.webp",
         duration: 6,
         scrollVh: 90,
-        eyebrow: "03",
+        eyebrow: EXPERTISE[2].num,
         titleMain: "Промислові",
-        titleAccent: "об'єкти",
+        titleAccent: "об’єкти",
+        body: EXPERTISE[2].points,
       },
       {
         id: "iii4",
@@ -369,9 +338,10 @@ export const FILM: Act[] = [
         posterSrc: "/poster/auto_iii4.webp",
         duration: 6,
         scrollVh: 90,
-        eyebrow: "04",
+        eyebrow: EXPERTISE[3].num,
         titleMain: "Інфраструктурні",
         titleAccent: "системи",
+        body: EXPERTISE[3].points,
       },
     ],
   },
@@ -383,15 +353,18 @@ export const FILM: Act[] = [
     playback: "autoplay",
     palette: "white",
     scenes: [
+      // Названия фаз — с сайта компании (PHASES), а не из film.md:
+      // IV.1 у них «Контроль якості», а не «Вхідний контроль»
       {
         id: "iv1",
         videoSrc: "/video/auto_iv1.mp4",
         posterSrc: "/poster/auto_iv1.webp",
         duration: 5,
         scrollVh: 80,
-        eyebrow: "PHASE 01",
-        titleMain: "Вхідний",
-        titleAccent: "контроль",
+        eyebrow: PHASES[0].code,
+        titleMain: "Контроль",
+        titleAccent: "якості",
+        body: PHASES[0].points,
         overlay: "phaseBar",
       },
       {
@@ -400,9 +373,10 @@ export const FILM: Act[] = [
         posterSrc: "/poster/auto_iv2.webp",
         duration: 5,
         scrollVh: 80,
-        eyebrow: "PHASE 02",
+        eyebrow: PHASES[1].code,
         titleMain: "Документальний",
         titleAccent: "супровід",
+        body: PHASES[1].points,
         overlay: "phaseBar",
       },
       {
@@ -411,9 +385,10 @@ export const FILM: Act[] = [
         posterSrc: "/poster/auto_iv3.webp",
         duration: 5,
         scrollVh: 80,
-        eyebrow: "PHASE 03",
+        eyebrow: PHASES[2].code,
         titleMain: "Відповідність",
         titleAccent: "стандартам",
+        body: PHASES[2].points,
         overlay: "phaseBar",
       },
       {
@@ -422,9 +397,10 @@ export const FILM: Act[] = [
         posterSrc: "/poster/auto_iv4.webp",
         duration: 5,
         scrollVh: 80,
-        eyebrow: "PHASE 04",
+        eyebrow: PHASES[3].code,
         titleMain: "Технічний",
         titleAccent: "контроль",
+        body: PHASES[3].points,
         overlay: "phaseBar",
       },
     ],
@@ -450,9 +426,8 @@ export const FILM: Act[] = [
         titleMain: "Взаємодія",
         titleAccent: CONTACTS.statusLine,
         body: [CONTACTS.address, CONTACTS.phone, CONTACTS.email],
-        overlay: "cityLights",
-        // Кольцо фильма: страна уже вся в огнях, и огни не гаснут
-        lightsMode: "lit",
+        // overlay "cityLights" (режим lit — огни уже горят) вернётся на шаге 5
+        // вместе с реальным кадром финальной орбиты
         cta: { label: "Запит консультації", action: "lead" },
       },
     ],
