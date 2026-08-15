@@ -221,12 +221,16 @@ export const FILM: Act[] = [
     playback: "scrub",
     palette: "steel",
     scenes: [
+      // Сцены цепи: окно [0, 1] — видео играет ровно по своему пролёту,
+      // кадр шва приходится точно на границу сегментов. Центрированное окно
+      // по умолчанию замораживало конец ролика на полсцены и дублировало шов.
       {
         id: "i1",
         videoSrc: "/video/scrub_i1.mp4",
         posterSrc: "/poster/scrub_i1.webp",
         duration: 8,
         scrollVh: 100,
+        scrubWindow: [0, 1],
         eyebrow: "01",
         titleMain: "Технічне",
         titleAccent: "обслуговування",
@@ -242,6 +246,7 @@ export const FILM: Act[] = [
         posterSrc: "/poster/scrub_i2.webp",
         duration: 8,
         scrollVh: 100,
+        scrubWindow: [0, 1],
         eyebrow: "02",
         titleMain: "Модернізація",
         titleAccent: "та ремонт",
@@ -258,6 +263,7 @@ export const FILM: Act[] = [
         posterSrc: "/poster/scrub_i3.webp",
         duration: 8,
         scrollVh: 100,
+        scrubWindow: [0, 1],
         eyebrow: "03",
         titleMain: "Постачання",
         titleAccent: "обладнання",
