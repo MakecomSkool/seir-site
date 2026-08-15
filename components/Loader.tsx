@@ -32,6 +32,21 @@ export default function Loader() {
       if (cancelled) return;
       setClosing(true);
       document.documentElement.classList.add("film-ready");
+      // Прогрев всех постеров: при сверхбыстром прыжке в непрогретый сегмент
+      // вместо чёрного мгновенно показывается его первый кадр
+      const warmPosters = () => {
+        document
+          .querySelectorAll<HTMLVideoElement>("[data-seg] video[poster]")
+          .forEach((video) => {
+            const img = new Image();
+            img.src = video.poster;
+          });
+      };
+      if (typeof window.requestIdleCallback === "function") {
+        window.requestIdleCallback(warmPosters);
+      } else {
+        window.setTimeout(warmPosters, 300);
+      }
       window.setTimeout(() => {
         if (!cancelled) setDone(true);
       }, FADE_MS);

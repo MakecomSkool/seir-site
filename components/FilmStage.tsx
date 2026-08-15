@@ -46,12 +46,22 @@ import {
 const SCROLL_HINT_PX = 60;
 
 // Предзагрузка: текущий сегмент + два вперёд + один назад (oneshot.md 6.5).
-const PRELOAD_BACK = 1;
-const PRELOAD_AHEAD = 2;
+// На десктопе окно шире (3 вперёд / 2 назад): быстрый скролл в обе стороны
+// не должен влетать в непрогретый сегмент. На мобиле окно узкое — лимит
+// одновременных декодеров у iOS.
+const PRELOAD_BACK_DESKTOP = 2;
+const PRELOAD_AHEAD_DESKTOP = 3;
+const PRELOAD_BACK_MOBILE = 1;
+const PRELOAD_AHEAD_MOBILE = 2;
 
 // Сик квантуется к сетке кадров (24 fps футаж), новый сик не выдаётся,
 // пока идёт предыдущий (очереди сиков душат WebKit).
 const FRAME_STEP = 1 / 24;
+// Стабильная плавность на любой скорости: чем быстрее скролл, тем крупнее
+// шаг квантизации сика — меньше декодов на кадр, главный поток не давится.
+// Пороги в px/s сглаженной скорости; на успокоении шаг возвращается к кадру.
+const FAST_SCROLL_PX_S = 1500;
+const VERY_FAST_SCROLL_PX_S = 3200;
 
 // Тексты: появление/уход на [fromT, toT] — только opacity + translateY.
 const COPY_FADE_S = 0.5;
@@ -230,16 +240,22 @@ export default function FilmStage({ media }: { media?: MediaAvailability }) {
       seg.video?.addEventListener("seeked", seekedHandlers[index]);
     });
 
-    // Квантованный сик с гейтом занятости
-    const seekTo = (seg: (typeof segments)[number], rawTime: number) => {
+    // Квантованный сик с гейтом занятости. step — шаг квантизации: активный
+    // сегмент на быстром скролле сикается крупнее (см. applyScroll),
+    // парковка соседей всегда покадровая.
+    const seekTo = (
+      seg: (typeof segments)[number],
+      rawTime: number,
+      step: number = FRAME_STEP,
+    ) => {
       const video = seg.video;
       if (!video || video.readyState < 1) return;
-      let time = Math.round(rawTime / FRAME_STEP) * FRAME_STEP;
+      let time = Math.round(rawTime / step) * step;
       if (Number.isFinite(video.duration)) {
         time = Math.min(time, Math.max(0, video.duration - FRAME_STEP));
       }
       time = Math.max(0, time);
-      if (Math.abs(video.currentTime - time) > FRAME_STEP / 2) {
+      if (Math.abs(video.currentTime - time) > step / 2) {
         if (video.seeking) seg.pendingTime = time;
         else {
           seg.pendingTime = null;
@@ -253,6 +269,7 @@ export default function FilmStage({ media }: { media?: MediaAvailability }) {
     };
 
     let lastT = 0;
+    let lastActiveStep = FRAME_STEP;
 
     const applyScroll = () => {
       if (!vhUnit) return;
@@ -286,13 +303,26 @@ export default function FilmStage({ media }: { media?: MediaAvailability }) {
         lastActive = active;
       }
 
-      // Предзагрузка: текущий + два вперёд + один назад; за окном —
-      // освобождаем буферы и декодер (лимит медиаплееров на iOS)
+      // Шаг сика по скорости: на быстром скролле квантуем крупнее —
+      // движение в кадре и так огромное, а декодов на кадр меньше
+      const speed = Math.abs(smoothVelocity);
+      const activeStep =
+        speed > VERY_FAST_SCROLL_PX_S
+          ? FRAME_STEP * 3
+          : speed > FAST_SCROLL_PX_S
+            ? FRAME_STEP * 2
+            : FRAME_STEP;
+      lastActiveStep = activeStep;
+      const preloadBack = mobileView ? PRELOAD_BACK_MOBILE : PRELOAD_BACK_DESKTOP;
+      const preloadAhead = mobileView ? PRELOAD_AHEAD_MOBILE : PRELOAD_AHEAD_DESKTOP;
+
+      // Предзагрузка окном вокруг активного; за окном — освобождаем буферы
+      // и декодер (лимит медиаплееров на iOS)
       for (let i = 0; i < segments.length; i++) {
         const seg = segments[i];
         const video = seg.video;
         if (!video) continue;
-        const inWindow = i >= active - PRELOAD_BACK && i <= active + PRELOAD_AHEAD;
+        const inWindow = i >= active - preloadBack && i <= active + preloadAhead;
         if (inWindow && !seg.mediaActive) {
           seg.mediaActive = true;
           video.preload = "auto";
@@ -317,7 +347,7 @@ export default function FilmStage({ media }: { media?: MediaAvailability }) {
           }
         } else if (i === active) {
           seg.pendingTime = null;
-          seekTo(seg, t - seg.span.tStart);
+          seekTo(seg, t - seg.span.tStart, activeStep);
         } else {
           // Соседи паркуются на своём граничном кадре: подмена на границе
           // мгновенно показывает совпадающий кадр, без ожидания сика
@@ -407,6 +437,15 @@ export default function FilmStage({ media }: { media?: MediaAvailability }) {
         const instant = (window.scrollY - lastScrollPx) / dt;
         smoothVelocity += (instant - smoothVelocity) * Math.min(1, dt * 8);
         if (Math.abs(smoothVelocity) < 1) smoothVelocity = 0;
+        // Скролл успокоился после быстрого прогона — дожимаем кадр точным
+        // шагом, иначе покой остался бы на крупноквантованной позиции
+        if (
+          lastActiveStep > FRAME_STEP &&
+          Math.abs(smoothVelocity) <= FAST_SCROLL_PX_S
+        ) {
+          lastActiveStep = FRAME_STEP;
+          lastPosVh = -1;
+        }
       }
       lastTime = time;
       lastScrollPx = window.scrollY;
