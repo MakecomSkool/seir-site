@@ -65,13 +65,17 @@
 cinematic industrial documentary, photorealistic, shot on ARRI Alexa, deep
 blacks with lifted shadows, fine film grain, practical light only, no text,
 no logos, no people, no glowing energy lines, no sparks, clean empty space in
-the middle third for typography
+the middle third for typography, full frame edge to edge, no letterbox, no
+black bars, no border, no timecode, no frame counter, no film stock markings,
+no camera overlay
 ```
 Хвост светлых сцен (K14-K18):
 ```
 clean clinical industrial photography, bright cold white light, high key,
 white and pale grey surfaces, crisp detail, fine film grain, no text, no
-logos, no people
+logos, no people, full frame edge to edge, no letterbox, no black bars, no
+border, no timecode, no frame counter, no film stock markings, no camera
+overlay
 ```
 Новизна (везде, кроме K03):
 ```
