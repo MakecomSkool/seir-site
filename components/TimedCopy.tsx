@@ -47,7 +47,7 @@ function BodyList({
   return (
     <>
       <ul
-        className={`mt-4 max-w-[620px] font-mono text-[13px] leading-[1.85] ${dim} ${
+        className={`${mobile ? "mt-2 text-[12px] leading-[1.6]" : "mt-4 text-[13px] leading-[1.85]"} max-w-[620px] font-mono ${dim} ${
           twoColumns && !mobile ? "md:columns-2 md:gap-12" : ""
         } ${collapsible && expanded ? "max-h-[38vh] overflow-y-auto pr-2" : ""}`}
       >
@@ -106,15 +106,19 @@ export function CopyBlockView({
   const inner = (
     <div className={`${mobile ? "" : "max-w-[860px]"} ${light ? "" : "copy-dark"}`}>
       {block.eyebrow && (
-        <p className={`font-mono text-[11px] uppercase tracking-[0.3em] ${gold}`}>
+        <p
+          className={`font-mono uppercase tracking-[0.3em] ${gold} ${
+            mobile ? "text-[10px]" : "text-[11px]"
+          }`}
+        >
           {block.eyebrow}
         </p>
       )}
 
       {(block.titleMain || block.titleAccent) && (
         <Heading
-          className={`mt-3 font-display font-semibold uppercase leading-[1.08] tracking-[-0.03em] [overflow-wrap:anywhere] ${ink}`}
-          style={{ fontSize: mobile ? "clamp(20px, 6vw, 30px)" : "clamp(24px, 4.1vw, 58px)" }}
+          className={`${mobile ? "mt-2" : "mt-3"} font-display font-semibold uppercase leading-[1.08] tracking-[-0.03em] [overflow-wrap:anywhere] ${ink}`}
+          style={{ fontSize: mobile ? "clamp(17px, 5vw, 22px)" : "clamp(24px, 4.1vw, 58px)" }}
         >
           {block.titleMain}
           {block.titleAccent && (
@@ -132,17 +136,19 @@ export function CopyBlockView({
 
       {block.services?.length ? (
         emphasizedServices ? (
-          <div className="mt-5">
+          <div className={mobile ? "mt-2" : "mt-5"}>
             {block.services.map((service) => (
               <p
                 key={service}
-                className={`font-sans text-[15px] uppercase tracking-[0.08em] ${ink}`}
+                className={`font-sans uppercase tracking-[0.08em] ${ink} ${
+                  mobile ? "text-[11px]" : "text-[15px]"
+                }`}
               >
                 {service}
               </p>
             ))}
           </div>
-        ) : (
+        ) : mobile ? null : (
           <p className={`mt-4 font-mono text-[13px] leading-[1.85] ${dim}`}>
             {block.services.join(" · ")}
           </p>
@@ -150,8 +156,8 @@ export function CopyBlockView({
       ) : null}
 
       {block.counter && (
-        <div className="mt-4 flex items-baseline gap-4">
-          <p className={`font-mono text-[22px] ${gold}`}>
+        <div className={`flex items-baseline gap-3 ${mobile ? "mt-2" : "mt-4"}`}>
+          <p className={`font-mono ${mobile ? "text-[15px]" : "text-[22px]"} ${gold}`}>
             {block.counter.from} → {block.counter.to}
           </p>
           <p className={`font-mono text-[10px] uppercase tracking-[0.2em] ${dim}`}>
@@ -164,7 +170,9 @@ export function CopyBlockView({
         <button
           type="button"
           onClick={onCta && (() => onCta(block.cta!))}
-          className={`pointer-events-auto mt-6 cursor-pointer rounded-full border px-6 py-3 text-[11px] uppercase tracking-[0.3em] backdrop-blur transition-colors duration-500 ${
+          className={`pointer-events-auto cursor-pointer rounded-full border uppercase tracking-[0.3em] backdrop-blur transition-colors duration-500 ${
+            mobile ? "mt-2.5 px-4 py-1.5 text-[10px]" : "mt-6 px-6 py-3 text-[11px]"
+          } ${
             light
               ? "border-[var(--dim-dark)] text-[#02030A] hover:border-[#02030A]"
               : "border-[var(--dim)] text-[var(--ink)] hover:border-[var(--ink)]"
@@ -182,7 +190,7 @@ export function CopyBlockView({
     return (
       <div className="flex h-full w-full items-end px-4 pb-[9vh]">
         <div
-          className="w-full rounded-2xl p-5"
+          className="w-full rounded-xl p-4"
           style={{
             backdropFilter: "blur(12px)",
             WebkitBackdropFilter: "blur(12px)",

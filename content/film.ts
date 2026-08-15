@@ -48,7 +48,7 @@ export const IOS_AUTOPLAY_FALLBACK = false;
 // Мобильная ветка (oneshot.md, раздел 9): скролл «длиннее» на палец —
 // таблица темпа умножается на 0.8; списки в плашке свёрнуты до 4 позиций.
 export const MOBILE_TEMPO = 0.8;
-export const MOBILE_LIST_LIMIT = 4;
+export const MOBILE_LIST_LIMIT = 3;
 export const MOBILE_BREAKPOINT = "(max-width: 819px)";
 
 // Текстовый блок таймлайна: появляется на [fromT, toT] секундах глобального
@@ -115,8 +115,9 @@ export const CHROME = {
     { label: "Експертиза", target: "expertise" },
     { label: "Якість", target: "quality" },
   ] satisfies NavItem[],
-  // Пилюля открывает LeadPanel
+  // Пилюля открывает LeadPanel; короткая форма — мобильная шапка
   cta: "Запит консультації",
+  ctaShort: "Запит",
   // aria-подпись тега CAT; клик ведёт к ленте каталога
   catalog: "До каталогу обладнання",
   scrollHint: "прокрутіть",
