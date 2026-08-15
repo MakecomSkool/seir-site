@@ -72,7 +72,13 @@ export default function Chrome({
       }`}
     >
       {/* Навигация: прозрачная, без подложки */}
-      <header className="fixed inset-x-0 top-0 z-40 flex items-center justify-between px-6 py-5 md:px-10">
+      <header className="fixed inset-x-0 top-0 z-40 flex items-center justify-between px-4 py-4 md:px-10 md:py-5">
+        {/* Мобильный бейдж раздела: по центру шапки, в одну линию с лого и CTA */}
+        {mode === "film" && mobile && (
+          <p className="pointer-events-none absolute left-1/2 top-1/2 max-w-[40vw] -translate-x-1/2 -translate-y-1/2 overflow-hidden text-ellipsis whitespace-nowrap font-mono text-[9px] uppercase tracking-[0.3em] text-[var(--chrome-dim)] transition-colors duration-500">
+            {sections[state.section]?.title}
+          </p>
+        )}
         <button
           type="button"
           onClick={() => onNavigate(sections[0].id)}
@@ -96,9 +102,13 @@ export default function Chrome({
         <button
           type="button"
           onClick={openLeadPanel}
-          className="cursor-pointer rounded-full border border-[var(--chrome-dim)] px-5 py-2 text-[11px] uppercase tracking-[0.3em] text-[var(--chrome-ink)] transition-colors duration-500 hover:border-[var(--chrome-ink)]"
+          className={`cursor-pointer rounded-full border border-[var(--chrome-dim)] uppercase text-[var(--chrome-ink)] transition-colors duration-500 hover:border-[var(--chrome-ink)] ${
+            mobile
+              ? "px-3.5 py-1.5 text-[9px] tracking-[0.2em]"
+              : "px-5 py-2 text-[11px] tracking-[0.3em]"
+          }`}
         >
-          {CHROME.cta}
+          {mobile ? CHROME.ctaShort : CHROME.cta}
         </button>
       </header>
 
@@ -118,10 +128,6 @@ export default function Chrome({
               style={{ height: `${(state.progress * 100).toFixed(1)}%` }}
             />
           </div>
-          {/* Бейдж текущего раздела сверху справа */}
-          <p className="chrome-shadow fixed right-4 top-16 z-40 rounded-full border border-[var(--chrome-dim)] px-3 py-1 font-mono text-[9px] uppercase tracking-[0.25em] text-[var(--chrome-ink)] transition-colors duration-500">
-            {sections[state.section]?.title}
-          </p>
         </>
       )}
 
