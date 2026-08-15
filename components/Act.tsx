@@ -1,6 +1,6 @@
 import PhaseCard from "@/components/PhaseCard";
 import Scene from "@/components/Scene";
-import { PHASE_CARD_VH, type Act as ActConfig } from "@/content/film";
+import { PHASE_CARD_VH, type Act as ActConfig, type Cta } from "@/content/film";
 
 type Props = {
   act: ActConfig;
@@ -8,9 +8,10 @@ type Props = {
   withCard: boolean; // перед первым актом перебивки нет
   firstAct: boolean;
   layout: "film" | "vertical"; // vertical — версия для prefers-reduced-motion
+  onCta?: (cta: Cta) => void;
 };
 
-export default function Act({ act, startVh, withCard, firstAct, layout }: Props) {
+export default function Act({ act, startVh, withCard, firstAct, layout, onCta }: Props) {
   // Перебивка перед белым актом «Якість» белая, а не чёрная: это переход
   // в светлую часть (docs/build.md, шаг 3).
   const lightCard = act.palette === "white";
@@ -21,15 +22,16 @@ export default function Act({ act, startVh, withCard, firstAct, layout }: Props)
         {withCard && (
           <PhaseCard label={act.label} light={lightCard} layout="vertical" />
         )}
-        {act.scenes.map((scene) => (
+        {act.scenes.map((scene, index) => (
           <Scene
             key={scene.id}
             scene={scene}
             axis={act.axis}
             palette={act.palette}
             startVh={0}
-            first={false}
+            first={firstAct && index === 0}
             layout="vertical"
+            onCta={onCta}
           />
         ))}
       </section>
@@ -60,6 +62,7 @@ export default function Act({ act, startVh, withCard, firstAct, layout }: Props)
             startVh={sceneStartVh}
             first={firstAct && index === 0}
             layout="film"
+            onCta={onCta}
           />
         );
       })}

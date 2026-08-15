@@ -13,6 +13,7 @@ import {
   type Act as ActConfig,
   type ActId,
   type Axis,
+  type Cta,
 } from "@/content/film";
 
 // Фазовая перебивка: проявляется в хвосте предыдущей сцены (d от -CARD_IN до 0),
@@ -26,6 +27,16 @@ const BLUR_MIN_OPACITY = 0.15;
 
 // Скролл дальше этого порога прячет подсказку «прокрутіть».
 const SCROLL_HINT_PX = 60;
+
+// Тексты сцены уходят быстрее кадра и слегка съезжают вверх (build.md, шаг 4).
+// visibility прячет невидимую копию из hit-testing: без этого прозрачная CTA
+// продолжала бы ловить клики.
+function applyCopy(el: HTMLElement, d: number) {
+  const opacity = clamp01(1 - Math.abs(d) * 2.1);
+  el.style.opacity = String(opacity);
+  el.style.visibility = opacity <= 0 ? "hidden" : "visible";
+  el.style.transform = `translateY(${(d * -34).toFixed(1)}px)`;
+}
 
 const clamp01 = (value: number) => Math.min(1, Math.max(0, value));
 
@@ -126,6 +137,13 @@ export default function FilmStage({ film }: { film: ActConfig[] }) {
     else window.scrollTo({ top, behavior: "smooth" });
   };
 
+  // CTA сцен: lead — к контактам эпилога (LeadPanel появится на шаге 7),
+  // catalog — к проезду по оборудованию (секция каталога появится на шаге 7).
+  const onCta = (cta: Cta) => {
+    if (cta.action === "lead") navigate(film[film.length - 1].id, "scene");
+    else navigate("equipment");
+  };
+
   useEffect(() => {
     const query = window.matchMedia("(prefers-reduced-motion: reduce)");
     const sync = () => setReducedMotion(query.matches);
@@ -144,13 +162,21 @@ export default function FilmStage({ film }: { film: ActConfig[] }) {
     // занимает одну единицу глобального прогресса p; локальная дельта d = p - index.
     const segments = Array.from(
       stage.querySelectorAll<HTMLElement>("[data-seg]"),
-    ).map((el) => ({
-      el,
-      kind: el.dataset.seg as "card" | "scene",
-      axis: el.dataset.axis as Axis,
-      startVh: Number(el.dataset.startVh),
-      lenVh: Number(el.dataset.lenVh),
-    }));
+    ).map((el) => {
+      const sibling = el.nextElementSibling;
+      return {
+        el,
+        // Текстовый слой — сиблинг сцены, не потомок (не наследует blur/scale)
+        copy:
+          sibling instanceof HTMLElement && sibling.hasAttribute("data-scene-copy")
+            ? sibling
+            : null,
+        kind: el.dataset.seg as "card" | "scene",
+        axis: el.dataset.axis as Axis,
+        startVh: Number(el.dataset.startVh),
+        lenVh: Number(el.dataset.lenVh),
+      };
+    });
     const backdrop = stage.querySelector<HTMLElement>("[data-film-backdrop]");
 
     // Какой акт владеет каждым сегментом — для активной засечки ActRail.
@@ -211,6 +237,7 @@ export default function FilmStage({ film }: { film: ActConfig[] }) {
           seg.el.style.visibility = opacity <= 0 ? "hidden" : "visible";
         } else {
           applyAxis(seg.el, seg.axis, d);
+          if (seg.copy) applyCopy(seg.copy, d);
         }
       }
 
@@ -266,14 +293,15 @@ export default function FilmStage({ film }: { film: ActConfig[] }) {
     return (
       <div>
         <Chrome film={film} mode="vertical" onNavigate={navigate} />
-        {acts.map(({ act, withCard }) => (
+        {acts.map(({ act, withCard }, index) => (
           <Act
             key={act.id}
             act={act}
             startVh={0}
             withCard={withCard}
-            firstAct={false}
+            firstAct={index === 0}
             layout="vertical"
+            onCta={onCta}
           />
         ))}
       </div>
@@ -292,6 +320,7 @@ export default function FilmStage({ film }: { film: ActConfig[] }) {
         <div ref={stageRef} className="sticky top-0 h-screen overflow-hidden">
           <div
             data-film-backdrop=""
+            suppressHydrationWarning
             className="pointer-events-none absolute inset-0"
             style={{ background: "var(--paper)", opacity: 0 }}
           />
@@ -303,6 +332,7 @@ export default function FilmStage({ film }: { film: ActConfig[] }) {
               withCard={withCard}
               firstAct={index === 0}
               layout="film"
+              onCta={onCta}
             />
           ))}
         </div>

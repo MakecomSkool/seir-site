@@ -25,6 +25,11 @@ else if(a==='fall'){o=c(1-Math.abs(d)*1.35);t='scale('+(1+d*0.46)+')';b=(1-o)*7;
 else if(a==='lateral'){o=c(1-Math.abs(d)*1.1);t='translateX('+(-d*100)+'vw) scale(1.04)';}
 else if(a==='rise'){o=c(1-Math.abs(d)*1.35);t='translateY('+(d*26)+'vh) scale('+(1-d*0.18)+')';b=(1-o)*5;}
 else{o=c(1-Math.abs(d)*1.9);t='scale('+(1+d*0.06)+')';}
+var cp=e.nextElementSibling;
+if(cp&&cp.hasAttribute&&cp.hasAttribute('data-scene-copy')){
+var co=c(1-Math.abs(d)*2.1);cp.style.opacity=co;
+cp.style.visibility=co<=0?'hidden':'visible';
+cp.style.transform='translateY('+(d*-34)+'px)';}
 if(o<=0){e.style.opacity='0';e.style.visibility='hidden';e.style.filter='';continue}
 e.style.opacity=o;e.style.visibility='visible';e.style.transform=t;
 e.style.filter=(o>=0.15&&b>0.05)?'blur('+b.toFixed(2)+'px)':'';}
