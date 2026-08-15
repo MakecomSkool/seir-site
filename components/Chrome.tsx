@@ -2,7 +2,13 @@
 
 import { useEffect, useState } from "react";
 import ActRail from "@/components/ActRail";
-import { CHROME, type Act as ActConfig, type ActId } from "@/content/film";
+import { openLeadPanel } from "@/components/leadBus";
+import {
+  CHROME,
+  type Act as ActConfig,
+  type ActId,
+  type SectionId,
+} from "@/content/film";
 
 export type ChromeState = {
   act: number; // индекс текущего акта
@@ -15,7 +21,7 @@ export type NavigateAlign = "card" | "scene";
 type Props = {
   film: ActConfig[];
   mode: "film" | "vertical";
-  onNavigate: (actId: ActId, align?: NavigateAlign) => void;
+  onNavigate: (target: ActId | SectionId, align?: NavigateAlign) => void;
   // rAF-цикл FilmStage пушит состояние сюда, не перерисовывая сцены.
   register?: (setter: ((state: ChromeState) => void) | null) => void;
 };
@@ -80,7 +86,7 @@ export default function Chrome({ film, mode, onNavigate, register }: Props) {
         </nav>
         <button
           type="button"
-          onClick={() => onNavigate(film[film.length - 1].id, "scene")}
+          onClick={openLeadPanel}
           className="cursor-pointer rounded-full border border-[var(--chrome-dim)] px-5 py-2 text-[11px] uppercase tracking-[0.3em] text-[var(--chrome-ink)] transition-colors duration-500 hover:border-[var(--chrome-ink)]"
         >
           {CHROME.cta}

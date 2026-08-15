@@ -9,6 +9,7 @@ import Chrome, {
   type NavigateAlign,
 } from "@/components/Chrome";
 import PhaseBar from "@/components/PhaseBar";
+import { openLeadPanel, subscribeLeadPanel } from "@/components/leadBus";
 import type {
   CatTagNode,
   OverlayNode,
@@ -16,12 +17,14 @@ import type {
 } from "@/components/overlayBridge";
 import {
   PHASE_CARD_VH,
+  SECTIONS,
   stageHeightVh,
   type Act as ActConfig,
   type ActId,
   type Axis,
   type Cta,
   type Playback,
+  type SectionId,
 } from "@/content/film";
 
 // Фазовая перебивка: проявляется в хвосте предыдущей сцены (d от -CARD_IN до 0),
@@ -144,30 +147,41 @@ export default function FilmStage({ film }: { film: ActConfig[] }) {
     setter?.(uiRef.current);
   };
 
-  const navigate = (actId: ActId, align: NavigateAlign = "card") => {
+  const navigate = (target: ActId | SectionId, align: NavigateAlign = "card") => {
+    const actTarget = acts.find(({ act }) => act.id === target);
+    // Секции после фильма — обычные якоря в потоке документа
+    if (!actTarget) {
+      const el = document.getElementById(target);
+      if (!el) return;
+      const lenis = lenisRef.current;
+      if (!reducedMotion && lenis) lenis.scrollTo(el);
+      else
+        el.scrollIntoView({
+          behavior: reducedMotion ? "auto" : "smooth",
+          block: "start",
+        });
+      return;
+    }
     if (reducedMotion) {
-      document.getElementById(actId)?.scrollIntoView({ block: "start" });
+      document.getElementById(target)?.scrollIntoView({ block: "start" });
       return;
     }
     const wrap = wrapRef.current;
-    const target = acts.find(({ act }) => act.id === actId);
-    if (!wrap || !target) return;
-    // align "scene": мимо перебивки сразу к первой сцене акта — для CTA,
-    // ведущей к контактам эпилога.
+    if (!wrap) return;
+    // align "scene": мимо перебивки сразу к первой сцене акта
     const startVh =
-      target.startVh +
-      (align === "scene" && target.withCard ? PHASE_CARD_VH : 0);
+      actTarget.startVh +
+      (align === "scene" && actTarget.withCard ? PHASE_CARD_VH : 0);
     const top = startVh * (wrap.offsetHeight / heightVh);
     const lenis = lenisRef.current;
     if (lenis) lenis.scrollTo(top);
     else window.scrollTo({ top, behavior: "smooth" });
   };
 
-  // CTA сцен: lead — к контактам эпилога (LeadPanel появится на шаге 7),
-  // catalog — к проезду по оборудованию (секция каталога появится на шаге 7).
+  // CTA сцен: lead — открыть форму заявки, catalog — к ленте каталога
   const onCta = (cta: Cta) => {
-    if (cta.action === "lead") navigate(film[film.length - 1].id, "scene");
-    else navigate("equipment");
+    if (cta.action === "lead") openLeadPanel();
+    else navigate(SECTIONS.catalog.id);
   };
 
   useEffect(() => {
@@ -473,6 +487,11 @@ export default function FilmStage({ film }: { film: ActConfig[] }) {
 
     const lenis = new Lenis();
     lenisRef.current = lenis;
+    // Открытая панель заявки замораживает скролл фильма
+    const unsubscribeLead = subscribeLeadPanel((open) => {
+      if (open) lenis.stop();
+      else lenis.start();
+    });
     let frame = 0;
     const update = (time: number) => {
       lenis.raf(time);
@@ -495,6 +514,7 @@ export default function FilmStage({ film }: { film: ActConfig[] }) {
     frame = requestAnimationFrame(update);
 
     return () => {
+      unsubscribeLead();
       wrap.removeAttribute("data-film-live");
       window.removeEventListener("resize", onResize);
       cancelAnimationFrame(frame);
@@ -566,9 +586,21 @@ export default function FilmStage({ film }: { film: ActConfig[] }) {
         onNavigate={navigate}
         register={registerChrome}
       />
-      {/* Клик по CAT-тегу поведёт к карточке каталога (секция — шаг 7),
-          пока — к проезду по оборудованию */}
-      <CatTag onSelect={() => navigate("equipment")} />
+      {/* Клик по тегу ведёт к карточке показанного CAT-кода: лента
+          доскролливается горизонтально, страница — к секции каталога */}
+      <CatTag
+        onSelect={(code) => {
+          const card = document.getElementById(code);
+          const ribbon = card?.parentElement;
+          if (card && ribbon) {
+            ribbon.scrollLeft = Math.max(
+              0,
+              card.offsetLeft - ribbon.clientWidth / 2 + card.clientWidth / 2,
+            );
+          }
+          navigate(SECTIONS.catalog.id);
+        }}
+      />
       <PhaseBar
         labels={film.flatMap((act) =>
           act.scenes.filter((scene) => scene.overlay === "phaseBar").map((scene) => scene.eyebrow),

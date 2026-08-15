@@ -1,4 +1,6 @@
 import FilmStage from "@/components/FilmStage";
+import LeadPanel from "@/components/LeadPanel";
+import SiteSections from "@/components/SiteSections";
 import { FILM } from "@/content/film";
 
 // Выполняется при парсинге SSR-разметки, до гидрации: выставляет opacity и
@@ -52,6 +54,8 @@ export default function Home() {
     <>
       <FilmStage film={FILM} />
       <script dangerouslySetInnerHTML={{ __html: preHydration }} />
+      <SiteSections />
+      <LeadPanel />
     </>
   );
 }

@@ -11,7 +11,7 @@ const sameCats = (a: string[] | null, b: string[] | null) =>
   a === b ||
   (!!a && !!b && a.length === b.length && a.every((value, i) => value === b[i]));
 
-export default function CatTag({ onSelect }: { onSelect: () => void }) {
+export default function CatTag({ onSelect }: { onSelect: (code: string) => void }) {
   const rootRef = useRef<HTMLButtonElement>(null);
   const [cats, setCats] = useState<string[] | null>(null);
   const [index, setIndex] = useState(0);
@@ -45,7 +45,7 @@ export default function CatTag({ onSelect }: { onSelect: () => void }) {
       ref={rootRef}
       data-cat-tag=""
       type="button"
-      onClick={onSelect}
+      onClick={() => tag && onSelect(tag)}
       aria-label={CHROME.catalog}
       className={`fixed bottom-5 right-6 z-40 cursor-pointer font-mono text-[11px] tracking-[0.2em] text-[var(--gold)] transition-opacity duration-500 ${
         tag ? "opacity-100" : "pointer-events-none opacity-0"
