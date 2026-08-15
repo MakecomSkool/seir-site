@@ -45,10 +45,6 @@ export type Act = {
 // Высота фазовой перебивки между актами.
 export const PHASE_CARD_VH = 40;
 
-// Ширина растворения на границе сегментов, vh: сегмент набирает opacity на подходе
-// к своей стартовой границе и остаётся видимым, пока его не накроет следующий.
-export const FADE_VH = 24;
-
 // Метаданные сайта. layout.tsx берёт строки отсюда: тексты живут только в этом файле.
 export const SITE_META = {
   title: "SEIR — Стратегічні Енерго-Індустріальні Рішення",
@@ -324,3 +320,13 @@ export const totalScrollVh = (film: Act[] = FILM): number =>
       act.scenes.reduce((s, scene) => s + scene.scrollVh, 0),
     0,
   );
+
+// Высота скролл-спейсера: фильм должен остановиться, когда последняя сцена встаёт
+// в пик (d = 0), поэтому её собственный выездной ход в высоту не входит — вместо
+// него один вьюпорт. Когда после фильма появятся обычные секции, эпилог сам
+// уедет вверх вместе со sticky-сценой.
+export const stageHeightVh = (film: Act[] = FILM): number => {
+  const lastAct = film[film.length - 1];
+  const lastScene = lastAct?.scenes[lastAct.scenes.length - 1];
+  return totalScrollVh(film) - (lastScene?.scrollVh ?? 0) + 100;
+};
