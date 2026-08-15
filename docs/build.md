@@ -253,8 +253,20 @@ for %%f in (raw\auto_*.mp4) do (
     "public\video\%%~nf.mp4"
   ffmpeg -y -v error -i "%%f" -vframes 1 -q:v 3 -vf scale=1200:-2 "public\poster\%%~nf.webp"
 )
+
+if not exist public\video\mobile mkdir public\video\mobile
+for %%f in (raw\m_scrub_*.mp4) do (
+  echo mobile %%~nf
+  ffmpeg -y -v error -i "%%f" -c:v libx264 -preset slow -crf 23 -g 1 -keyint_min 1 ^
+    -sc_threshold 0 -pix_fmt yuv420p -an -movflags +faststart ^
+    -vf "hqdn3d=2:1.5:3:2.5,scale=720:-2" "public\video\mobile\%%~nf.mp4"
+)
 echo Done.
 ```
+
+Мобильная ветка (oneshot.md, раздел 9): вертикальные 9:16 исходники кладутся
+в `raw\m_scrub_<имя>.mp4`, кодируются в `public\video\mobile\` тем же
+all-intra crf 23 с денойзом, ширина 720.
 
 `-g 1 -keyint_min 1 -sc_threshold 0` делает каждый кадр ключевым. Без этого
 скраббинг будет дёргаться, и никакой код это не починит. Автоплейным роликам

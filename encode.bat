@@ -17,4 +17,12 @@ for %%f in (raw\auto_*.mp4) do (
     "public\video\%%~nf.mp4"
   ffmpeg -y -v error -i "%%f" -vframes 1 -q:v 3 -vf scale=1200:-2 "public\poster\%%~nf.webp"
 )
+
+if not exist public\video\mobile mkdir public\video\mobile
+for %%f in (raw\m_scrub_*.mp4) do (
+  echo mobile %%~nf
+  ffmpeg -y -v error -i "%%f" -c:v libx264 -preset slow -crf 23 -g 1 -keyint_min 1 ^
+    -sc_threshold 0 -pix_fmt yuv420p -an -movflags +faststart ^
+    -vf "hqdn3d=2:1.5:3:2.5,scale=720:-2" "public\video\mobile\%%~nf.mp4"
+)
 echo Done.
