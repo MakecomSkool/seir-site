@@ -78,10 +78,20 @@ body {
   text-shadow: none;
 }
 
-/* Канвасы и линии тока отключаются на узких экранах (docs/build.md, шаг 6) */
+/* Лёгкое свечение контура Украины */
+.ua-contour {
+  filter: drop-shadow(0 0 6px rgba(155, 220, 255, 0.35));
+}
+
+/* Канвасы и линии тока отключаются на узких экранах (docs/build.md, шаг 6).
+   Исключение — карта Украины: на мобиле она остаётся, но с половиной точек
+   и без glow контура. */
 @media (max-width: 819px) {
-  [data-film-overlay] {
+  [data-film-overlay]:not(.overlay-keep-mobile) {
     display: none;
+  }
+  .ua-contour {
+    filter: none;
   }
 }
 

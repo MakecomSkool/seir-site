@@ -1,6 +1,7 @@
 import CityLights from "@/components/CityLights";
 import FlowLayer from "@/components/FlowLayer";
 import SceneCopy from "@/components/SceneCopy";
+import UkraineMap from "@/components/UkraineMap";
 import {
   PALETTES,
   type Axis,
@@ -60,6 +61,7 @@ export default function Scene({
             className="absolute inset-0 h-full w-full object-cover"
           />
         )}
+        {scene.overlay === "ukraineMap" && <UkraineMap staticLit />}
         <SceneCopy
           scene={scene}
           light={light}
@@ -122,6 +124,9 @@ export default function Scene({
           <CityLights lit={scene.lightsMode === "lit"} />
         )}
         {scene.overlay === "flow" && <FlowLayer paths={scene.flowPaths} />}
+        {scene.overlay === "ukraineMap" && (
+          <UkraineMap lit={scene.lightsMode === "lit"} />
+        )}
       </div>
       <SceneCopy
         scene={scene}

@@ -27,7 +27,13 @@ export type ActId =
 export type Axis = "fall" | "lateral" | "rise" | "still";
 export type Playback = "scrub" | "autoplay";
 export type Palette = "cold" | "steel" | "black" | "dawn" | "white";
-export type Overlay = "cityLights" | "flow" | "leds" | "phaseBar" | null;
+export type Overlay =
+  | "cityLights"
+  | "flow"
+  | "leds"
+  | "phaseBar"
+  | "ukraineMap"
+  | null;
 
 export type Cta = { label: string; action: "lead" | "catalog" };
 
@@ -207,8 +213,9 @@ export const FILM: Act[] = [
         eyebrow: "Стратегічні Енерго-Індустріальні Рішення",
         titleMain: "За кожним вогнем",
         titleAccent: "стоїть обладнання",
-        // overlay "cityLights" вернётся на шаге 5: огни лягут на материк
-        // реального кадра орбиты
+        // Точный контур Украины с огнями городов рисует фронт: генеративное
+        // видео не содержит узнаваемой географии и остаётся атмосферным фоном
+        overlay: "ukraineMap",
         cta: { label: "Подивитись, як ми працюємо", action: "catalog" },
       },
     ],
@@ -439,8 +446,9 @@ export const FILM: Act[] = [
         titleMain: "Взаємодія",
         titleAccent: CONTACTS.statusLine,
         body: [CONTACTS.address, CONTACTS.phone, CONTACTS.email],
-        // overlay "cityLights" (режим lit — огни уже горят) вернётся на шаге 5
-        // вместе с реальным кадром финальной орбиты
+        // Кольцо фильма: тот же контур, но огни горят сразу и ярче
+        overlay: "ukraineMap",
+        lightsMode: "lit",
         cta: { label: "Запит консультації", action: "lead" },
       },
     ],
