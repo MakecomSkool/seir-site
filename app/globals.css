@@ -2,8 +2,9 @@
 
 :root {
   --ink: #eef2f7; /* текст поверх видео */
-  --dim: rgba(238, 242, 247, 0.58); /* навигация, вторая строка заголовка */
-  --dim-dark: rgba(2, 3, 10, 0.58); /* то же на светлом фоне: белый акт */
+  /* 0.58 → 0.72: списки работ поверх видео должны читаться чётко (прод) */
+  --dim: rgba(238, 242, 247, 0.72); /* навигация, вторая строка заголовка */
+  --dim-dark: rgba(2, 3, 10, 0.66); /* то же на светлом фоне: белый акт */
   --gold: #ffc24a; /* номера, активная засечка, огни, CTA */
   --gold-dark: #8a6420; /* то же на светлом фоне: белый акт */
   --arc: #9bdcff; /* импульсы на линиях */
@@ -61,13 +62,85 @@ body {
   opacity: 0;
 }
 
-/* Подсказка «прокрутіть» исчезает после 60px скролла */
+/* Полупрозрачная подсказка скролла: скрыта до ухода лоадера (film-ready),
+   исчезает после первых 60px скролла */
 [data-scroll-hint] {
-  opacity: 1;
-  transition: opacity 0.5s;
-}
-.chrome-scrolled [data-scroll-hint] {
   opacity: 0;
+  transition: opacity 0.8s;
+}
+html.film-ready [data-scroll-hint] {
+  opacity: 0.55;
+}
+html.film-ready .chrome-scrolled [data-scroll-hint] {
+  opacity: 0;
+}
+.hint-line {
+  animation: hint-drop 1.9s ease-in-out infinite;
+}
+@keyframes hint-drop {
+  0% {
+    transform: scaleY(0);
+    transform-origin: top;
+  }
+  45% {
+    transform: scaleY(1);
+    transform-origin: top;
+  }
+  55% {
+    transform: scaleY(1);
+    transform-origin: bottom;
+  }
+  100% {
+    transform: scaleY(0);
+    transform-origin: bottom;
+  }
+}
+
+/* Лоадер: контур лого рисует себя штрихом, импульс пробегает следом */
+.logo-animate .logo-contour {
+  stroke-dasharray: 100;
+  animation: logo-draw 2.4s ease-in-out infinite;
+}
+.logo-animate .logo-pulse {
+  stroke-dasharray: 40 60;
+  animation: logo-run 2.4s linear infinite;
+}
+@keyframes logo-draw {
+  0% {
+    stroke-dashoffset: 100;
+  }
+  55%,
+  75% {
+    stroke-dashoffset: 0;
+  }
+  100% {
+    stroke-dashoffset: -100;
+  }
+}
+@keyframes logo-run {
+  from {
+    stroke-dashoffset: 100;
+  }
+  to {
+    stroke-dashoffset: -100;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .logo-animate .logo-contour,
+  .logo-animate .logo-pulse,
+  .hint-line {
+    animation: none;
+  }
+  .logo-animate .logo-contour,
+  .logo-animate .logo-pulse {
+    stroke-dasharray: none;
+  }
+}
+
+/* Чёткость текста поверх видео: мягкая тень-скрим у тёмных блоков.
+   На светлом акте (тёмный текст) тень выключена. */
+.copy-dark {
+  text-shadow: 0 1px 18px rgba(2, 3, 10, 0.6), 0 1px 3px rgba(2, 3, 10, 0.4);
 }
 
 /* Нижние служебные строки читаемы и на светлом низе кадра (рассвет акта III) */

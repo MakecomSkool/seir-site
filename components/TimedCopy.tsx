@@ -47,7 +47,7 @@ function BodyList({
   return (
     <>
       <ul
-        className={`mt-4 max-w-[620px] font-mono text-[12px] leading-[1.9] ${dim} ${
+        className={`mt-4 max-w-[620px] font-mono text-[13px] leading-[1.85] ${dim} ${
           twoColumns && !mobile ? "md:columns-2 md:gap-12" : ""
         } ${collapsible && expanded ? "max-h-[38vh] overflow-y-auto pr-2" : ""}`}
       >
@@ -90,7 +90,7 @@ export function CopyBlockView({
     return (
       <div className="flex h-full w-full items-center justify-center">
         <p
-          className={`font-mono text-[11px] uppercase tracking-[0.3em] ${dim}`}
+          className={`font-mono text-[11px] uppercase tracking-[0.3em] ${dim} ${light ? "" : "copy-dark"}`}
         >
           {block.label}
         </p>
@@ -104,9 +104,9 @@ export function CopyBlockView({
   const Heading = block.first ? "h1" : "h2";
 
   const inner = (
-    <div className={mobile ? "" : "max-w-[860px]"}>
+    <div className={`${mobile ? "" : "max-w-[860px]"} ${light ? "" : "copy-dark"}`}>
       {block.eyebrow && (
-        <p className={`font-mono text-[10px] uppercase tracking-[0.3em] ${gold}`}>
+        <p className={`font-mono text-[11px] uppercase tracking-[0.3em] ${gold}`}>
           {block.eyebrow}
         </p>
       )}
@@ -143,7 +143,7 @@ export function CopyBlockView({
             ))}
           </div>
         ) : (
-          <p className={`mt-4 font-mono text-[12px] leading-[1.9] ${dim}`}>
+          <p className={`mt-4 font-mono text-[13px] leading-[1.85] ${dim}`}>
             {block.services.join(" · ")}
           </p>
         )

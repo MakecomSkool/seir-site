@@ -98,7 +98,7 @@ export default function SiteSections() {
               </a>
             </p>
             <p className="pt-4 font-mono text-[10px] uppercase tracking-[0.25em] text-[var(--dim)]">
-              {CONTACTS.status} / {CONTACTS.statusLine}
+              {CONTACTS.statusLine}
             </p>
           </div>
           <button
@@ -109,9 +109,6 @@ export default function SiteSections() {
             {CHROME.cta}
           </button>
         </div>
-        <p className="mt-24 font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--dim)]">
-          {CHROME.status}
-        </p>
       </section>
     </div>
   );

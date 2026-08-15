@@ -119,7 +119,6 @@ export const CHROME = {
   cta: "Запит консультації",
   // aria-подпись тега CAT; клик ведёт к ленте каталога
   catalog: "До каталогу обладнання",
-  status: "Система активна // ISO 9001 compliant",
   scrollHint: "прокрутіть",
   // Мобильная плашка: раскрытие свёрнутых списков (аккордеон внутри плашки)
   showAll: "Показати всі",
@@ -131,7 +130,6 @@ export const CONTACTS = {
   address: "Київ, Прорізна 13",
   phone: "+380 67 209 99 64",
   email: "info@seir.com.ua",
-  status: "SYSTEM LINK ESTABLISHED",
   statusLine: "Очікуємо на вхідний запит",
 };
 
@@ -298,7 +296,7 @@ export const COPY: CopyBlock[] = [
     kind: "phase",
     fromT: 16.4,
     toT: 19.4,
-    label: "// ФАЗА 01 · НАШІ РІШЕННЯ · SERVICE INDEX",
+    label: "// ФАЗА 01 · НАШІ РІШЕННЯ",
   },
   {
     id: "maintenance",
@@ -340,7 +338,7 @@ export const COPY: CopyBlock[] = [
     kind: "phase",
     fromT: 46.2,
     toT: 49.4,
-    label: "// ФАЗА 02 · ОБЛАДНАННЯ · CAT REGISTRY",
+    label: "// ФАЗА 02 · ОБЛАДНАННЯ",
   },
   // 40-64: проезд по ангару — тексты рисует карточный слой CAT (CatCards)
   {
@@ -348,7 +346,7 @@ export const COPY: CopyBlock[] = [
     kind: "phase",
     fromT: 72.4,
     toT: 75.8,
-    label: "// ФАЗА 03 · ЕКСПЕРТИЗА · OBJECT CLASSES",
+    label: "// ФАЗА 03 · ЕКСПЕРТИЗА",
   },
   {
     id: "exp1",
@@ -398,7 +396,7 @@ export const COPY: CopyBlock[] = [
     fromT: 116.3,
     toT: 119.2,
     light: true,
-    label: "// ФАЗА 04 · ЯКІСТЬ · CONTROL PROTOCOL",
+    label: "// ФАЗА 04 · ЯКІСТЬ",
   },
   // Названия фаз — с сайта компании (PHASES), а не из oneshot.md
   {
@@ -450,7 +448,7 @@ export const COPY: CopyBlock[] = [
     kind: "phase",
     fromT: 139.6,
     toT: 142.8,
-    label: "// ФАЗА 05 · ВЗАЄМОДІЯ · SYSTEM LINK",
+    label: "// ФАЗА 05 · ВЗАЄМОДІЯ",
   },
   {
     id: "contact",
@@ -459,7 +457,6 @@ export const COPY: CopyBlock[] = [
     // пока sticky-сцена не уедет под секции
     fromT: 146.5,
     toT: 999,
-    eyebrow: CONTACTS.status,
     titleMain: "Взаємодія",
     titleAccent: CONTACTS.statusLine,
     body: [CONTACTS.address, CONTACTS.phone, CONTACTS.email],

@@ -2,6 +2,7 @@ import { readdirSync } from "node:fs";
 import { join } from "node:path";
 import FilmStage from "@/components/FilmStage";
 import LeadPanel from "@/components/LeadPanel";
+import Loader from "@/components/Loader";
 import SiteSections from "@/components/SiteSections";
 import { SEGMENTS, type MediaAvailability } from "@/content/film";
 
@@ -89,6 +90,7 @@ export default function Home() {
       />
       <SiteSections />
       <LeadPanel />
+      <Loader />
     </>
   );
 }

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import ActRail from "@/components/ActRail";
+import Logo from "@/components/Logo";
 import { openLeadPanel } from "@/components/leadBus";
 import {
   CHROME,
@@ -75,9 +76,10 @@ export default function Chrome({
         <button
           type="button"
           onClick={() => onNavigate(sections[0].id)}
-          className="cursor-pointer text-[11px] uppercase tracking-[0.44em] text-[var(--chrome-ink)] transition-colors duration-500"
+          aria-label={CHROME.logo}
+          className="cursor-pointer text-[var(--chrome-ink)] transition-colors duration-500"
         >
-          {CHROME.logo}
+          <Logo size={24} />
         </button>
         <nav className="hidden items-center gap-7 md:flex">
           {CHROME.nav.map((item) => (
@@ -123,17 +125,18 @@ export default function Chrome({
         </>
       )}
 
-      <p className="chrome-shadow fixed bottom-5 left-6 z-40 font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--chrome-dim)] transition-colors duration-500">
-        {CHROME.status}
-      </p>
-
+      {/* Полупрозрачная подсказка скролла: появляется после лоадера
+          (html.film-ready), гаснет после первых 60px скролла */}
       {mode === "film" && (
-        <p
+        <div
           data-scroll-hint=""
-          className="chrome-shadow pointer-events-none fixed bottom-5 right-6 z-40 font-mono text-[10px] uppercase tracking-[0.3em] text-[var(--chrome-dim)]"
+          className="chrome-shadow pointer-events-none fixed bottom-6 left-1/2 z-40 flex -translate-x-1/2 flex-col items-center gap-2"
         >
-          {CHROME.scrollHint}
-        </p>
+          <p className="font-mono text-[10px] uppercase tracking-[0.35em] text-[var(--chrome-ink)]">
+            {CHROME.scrollHint}
+          </p>
+          <span className="hint-line block h-6 w-px bg-[var(--chrome-ink)]" />
+        </div>
       )}
 
       {/* Поверх всего: зерно остаётся в светлой части, виньетка выключается (CSS) */}
