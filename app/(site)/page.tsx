@@ -30,6 +30,9 @@ e.style.opacity=o;e.style.visibility='visible';e.style.transform=t;
 e.style.filter=(o>=0.15&&b>0.05)?'blur('+b.toFixed(2)+'px)':'';}
 var bd=w.querySelector('[data-film-backdrop]'),f=+w.getAttribute('data-white-from'),g=+w.getAttribute('data-white-to');
 if(bd&&f>=0){bd.style.opacity=c(Math.min((p-(f+0.2))/0.3,(g+0.5-p)/0.3));}
+var ch=document.querySelector('.chrome');
+if(ch){ch.classList[(f>=0&&p>=f-0.15&&p<g-0.2)?'add':'remove']('chrome-light');
+ch.classList[(window.scrollY>60)?'add':'remove']('chrome-scrolled');}
 }
 A();
 addEventListener('scroll',A,{passive:true});

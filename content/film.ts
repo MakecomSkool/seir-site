@@ -35,6 +35,7 @@ export type Scene = {
 
 export type Act = {
   id: ActId;
+  title: string; // человекочитаемое название акта: шкала актов, aria
   label: string; // строка фазовой перебивки ПЕРЕД актом: «// ФАЗА 02 · ОБЛАДНАННЯ · CAT REGISTRY»
   axis: Axis;
   playback: Playback;
@@ -52,6 +53,25 @@ export const SITE_META = {
     "Постачання обладнання, ремонт і модернізація для енергетики та промисловості.",
 };
 
+export type NavItem = { label: string; target: ActId };
+
+// Хром: навигация, статусные строки. Тексты живут только здесь.
+export const CHROME = {
+  logo: "SEIR",
+  nav: [
+    // «Про компанію» до появления секций после фильма (build.md, шаг 7) ведёт в начало.
+    { label: "Про компанію", target: "prologue" },
+    { label: "Рішення", target: "solutions" },
+    { label: "Обладнання", target: "equipment" },
+    { label: "Експертиза", target: "expertise" },
+    { label: "Якість", target: "quality" },
+  ] satisfies NavItem[],
+  // Пилюля откроет LeadPanel на шаге 7; пока скроллит к сцене эпилога с контактами.
+  cta: "Запит консультації",
+  status: "Система активна // ISO 9001 compliant",
+  scrollHint: "прокрутіть",
+};
+
 // Градиенты-заглушки по палитрам актов. Останутся фоновой подложкой под видео.
 export const PALETTES: Record<Palette, string> = {
   cold: "radial-gradient(120% 90% at 50% 115%, #123055 0%, #081527 45%, #02030A 100%)",
@@ -64,6 +84,7 @@ export const PALETTES: Record<Palette, string> = {
 export const FILM: Act[] = [
   {
     id: "prologue",
+    title: "Орбіта",
     label: "", // перед прологом перебивки нет
     axis: "fall",
     playback: "scrub",
@@ -85,6 +106,7 @@ export const FILM: Act[] = [
   },
   {
     id: "solutions",
+    title: "Наші рішення",
     label: "// ФАЗА 01 · НАШІ РІШЕННЯ · SERVICE INDEX",
     axis: "fall",
     playback: "scrub",
@@ -155,6 +177,7 @@ export const FILM: Act[] = [
   },
   {
     id: "equipment",
+    title: "Обладнання",
     label: "// ФАЗА 02 · ОБЛАДНАННЯ · CAT REGISTRY",
     axis: "lateral",
     // CLAUDE.md: акт II скраббится (в docs/film.md §4 есть заметка про автоплей — не действует).
@@ -187,6 +210,7 @@ export const FILM: Act[] = [
   },
   {
     id: "expertise",
+    title: "Експертиза",
     label: "// ФАЗА 03 · ЕКСПЕРТИЗА · OBJECT CLASSES",
     axis: "rise",
     playback: "autoplay",
@@ -236,6 +260,7 @@ export const FILM: Act[] = [
   },
   {
     id: "quality",
+    title: "Якість",
     label: "// ФАЗА 04 · ЯКІСТЬ · CONTROL PROTOCOL",
     axis: "still",
     playback: "autoplay",
@@ -289,6 +314,7 @@ export const FILM: Act[] = [
   },
   {
     id: "epilogue",
+    title: "Взаємодія",
     label: "// ФАЗА 05 · ВЗАЄМОДІЯ · SYSTEM LINK",
     axis: "rise",
     playback: "scrub",

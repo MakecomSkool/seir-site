@@ -3,10 +3,15 @@
 import { useEffect, useRef, useState } from "react";
 import Lenis from "lenis";
 import Act from "@/components/Act";
+import Chrome, {
+  type ChromeState,
+  type NavigateAlign,
+} from "@/components/Chrome";
 import {
   PHASE_CARD_VH,
   stageHeightVh,
   type Act as ActConfig,
+  type ActId,
   type Axis,
 } from "@/content/film";
 
@@ -18,6 +23,9 @@ const CARD_HOLD = 0.5;
 // Blur почти не виден на полупрозрачном слое, а стоит дороже всего —
 // ниже этого порога opacity фильтр не назначаем.
 const BLUR_MIN_OPACITY = 0.15;
+
+// Скролл дальше этого порога прячет подсказку «прокрутіть».
+const SCROLL_HINT_PX = 60;
 
 const clamp01 = (value: number) => Math.min(1, Math.max(0, value));
 
@@ -65,6 +73,9 @@ function applyAxis(el: HTMLElement, axis: Axis, d: number) {
 export default function FilmStage({ film }: { film: ActConfig[] }) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
+  const lenisRef = useRef<Lenis | null>(null);
+  const chromeSetterRef = useRef<((state: ChromeState) => void) | null>(null);
+  const uiRef = useRef<ChromeState>({ act: 0, light: false, scrolled: false });
   const [reducedMotion, setReducedMotion] = useState(false);
   const heightVh = stageHeightVh(film);
 
@@ -88,6 +99,32 @@ export default function FilmStage({ film }: { film: ActConfig[] }) {
       act.scenes.reduce((sum, scene) => sum + scene.scrollVh, 0);
     return { act, startVh, withCard };
   });
+
+  const registerChrome = (setter: ((state: ChromeState) => void) | null) => {
+    chromeSetterRef.current = setter;
+    // Chrome мог ремоунтнуться (переключение reduced-motion) — сразу отдаём
+    // актуальное состояние, иначе диф-гард в applyScroll пропустит первый пуш.
+    setter?.(uiRef.current);
+  };
+
+  const navigate = (actId: ActId, align: NavigateAlign = "card") => {
+    if (reducedMotion) {
+      document.getElementById(actId)?.scrollIntoView({ block: "start" });
+      return;
+    }
+    const wrap = wrapRef.current;
+    const target = acts.find(({ act }) => act.id === actId);
+    if (!wrap || !target) return;
+    // align "scene": мимо перебивки сразу к первой сцене акта — для CTA,
+    // ведущей к контактам эпилога.
+    const startVh =
+      target.startVh +
+      (align === "scene" && target.withCard ? PHASE_CARD_VH : 0);
+    const top = startVh * (wrap.offsetHeight / heightVh);
+    const lenis = lenisRef.current;
+    if (lenis) lenis.scrollTo(top);
+    else window.scrollTo({ top, behavior: "smooth" });
+  };
 
   useEffect(() => {
     const query = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -115,6 +152,26 @@ export default function FilmStage({ film }: { film: ActConfig[] }) {
       lenVh: Number(el.dataset.lenVh),
     }));
     const backdrop = stage.querySelector<HTMLElement>("[data-film-backdrop]");
+
+    // Какой акт владеет каждым сегментом — для активной засечки ActRail.
+    const actOfSegment: number[] = [];
+    film.forEach((act, actIndex) => {
+      if (actIndex > 0) actOfSegment.push(actIndex);
+      act.scenes.forEach(() => actOfSegment.push(actIndex));
+    });
+
+    // Диапазон сегментов белого акта — как whiteFrom/whiteTo в рендере.
+    let wFrom = -1;
+    let wTo = -1;
+    let cursor = 0;
+    film.forEach((act, actIndex) => {
+      const cardIndex = actIndex > 0 ? cursor : -1;
+      cursor += (actIndex > 0 ? 1 : 0) + act.scenes.length;
+      if (act.palette === "white") {
+        wFrom = cardIndex !== -1 ? cardIndex : cursor - act.scenes.length;
+        wTo = cursor;
+      }
+    });
 
     // Сигнал пре-гидрационному скрипту снять свой одноразовый scroll-слушатель.
     wrap.setAttribute("data-film-live", "1");
@@ -157,15 +214,34 @@ export default function FilmStage({ film }: { film: ActConfig[] }) {
         }
       }
 
-      if (backdrop && whiteFrom >= 0) {
+      if (backdrop && wFrom >= 0) {
         const white = clamp01(
-          Math.min((p - (whiteFrom + 0.2)) / 0.3, (whiteTo + 0.5 - p) / 0.3),
+          Math.min((p - (wFrom + 0.2)) / 0.3, (wTo + 0.5 - p) / 0.3),
         );
         backdrop.style.opacity = String(white);
+      }
+
+      // Состояние хрома: активный акт, инверсия в белом акте, подсказка скролла.
+      // Пушится в Chrome через setter — сцены не перерисовываются.
+      const segAt = Math.min(Math.floor(p), actOfSegment.length - 1);
+      const next: ChromeState = {
+        act: actOfSegment[segAt] ?? 0,
+        light: wFrom >= 0 && p >= wFrom - 0.15 && p < wTo - 0.2,
+        scrolled: window.scrollY > SCROLL_HINT_PX,
+      };
+      const prev = uiRef.current;
+      if (
+        next.act !== prev.act ||
+        next.light !== prev.light ||
+        next.scrolled !== prev.scrolled
+      ) {
+        uiRef.current = next;
+        chromeSetterRef.current?.(next);
       }
     };
 
     const lenis = new Lenis();
+    lenisRef.current = lenis;
     let frame = 0;
     const update = (time: number) => {
       lenis.raf(time);
@@ -179,15 +255,17 @@ export default function FilmStage({ film }: { film: ActConfig[] }) {
       wrap.removeAttribute("data-film-live");
       window.removeEventListener("resize", onResize);
       cancelAnimationFrame(frame);
+      lenisRef.current = null;
       lenis.destroy();
     };
-  }, [film, reducedMotion, heightVh, whiteFrom, whiteTo]);
+  }, [film, reducedMotion, heightVh]);
 
   // prefers-reduced-motion: обычная вертикальная страница, без спейсера,
   // sticky-стека и rAF-цикла. Полноценная версия, не заглушка.
   if (reducedMotion) {
     return (
       <div>
+        <Chrome film={film} mode="vertical" onNavigate={navigate} />
         {acts.map(({ act, withCard }) => (
           <Act
             key={act.id}
@@ -203,30 +281,38 @@ export default function FilmStage({ film }: { film: ActConfig[] }) {
   }
 
   return (
-    <div
-      ref={wrapRef}
-      data-film-total={heightVh}
-      data-white-from={whiteFrom}
-      data-white-to={whiteTo}
-      style={{ height: `${heightVh}vh` }}
-    >
-      <div ref={stageRef} className="sticky top-0 h-screen overflow-hidden">
-        <div
-          data-film-backdrop=""
-          className="pointer-events-none absolute inset-0"
-          style={{ background: "var(--paper)", opacity: 0 }}
-        />
-        {acts.map(({ act, startVh, withCard }, index) => (
-          <Act
-            key={act.id}
-            act={act}
-            startVh={startVh}
-            withCard={withCard}
-            firstAct={index === 0}
-            layout="film"
+    <>
+      <div
+        ref={wrapRef}
+        data-film-total={heightVh}
+        data-white-from={whiteFrom}
+        data-white-to={whiteTo}
+        style={{ height: `${heightVh}vh` }}
+      >
+        <div ref={stageRef} className="sticky top-0 h-screen overflow-hidden">
+          <div
+            data-film-backdrop=""
+            className="pointer-events-none absolute inset-0"
+            style={{ background: "var(--paper)", opacity: 0 }}
           />
-        ))}
+          {acts.map(({ act, startVh, withCard }, index) => (
+            <Act
+              key={act.id}
+              act={act}
+              startVh={startVh}
+              withCard={withCard}
+              firstAct={index === 0}
+              layout="film"
+            />
+          ))}
+        </div>
       </div>
-    </div>
+      <Chrome
+        film={film}
+        mode="film"
+        onNavigate={navigate}
+        register={registerChrome}
+      />
+    </>
   );
 }
