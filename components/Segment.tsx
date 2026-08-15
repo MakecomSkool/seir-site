@@ -11,14 +11,19 @@ type Props = {
   // остаётся градиентом и не делает ни одного сетевого запроса.
   // Без карты (undefined) считаем, что файлы есть.
   avail?: SceneMediaAvailability;
+  // Мобильная ветка: собственные 9:16 файлы (reframe); при их отсутствии
+  // мобилка падает на десктопный 16:9 файл (object-cover прикроет).
+  mobile?: boolean;
 };
 
 // Чистый видеослой одного сегмента таймлайна. Движение живёт в самом видео:
 // никаких transform и blur; на границе сегментов rAF-цикл делает жёсткую
 // подмену visibility — оба видео в граничный момент показывают один кадр.
-export default function Segment({ segment, index, avail }: Props) {
-  const hasVideo = avail ? avail.mp4 : true;
+export default function Segment({ segment, index, avail, mobile = false }: Props) {
+  const useMobileSrc = mobile && (avail ? avail.mobile : false);
+  const hasVideo = useMobileSrc || (avail ? avail.mp4 : true);
   const hasPoster = avail ? avail.poster : true;
+  const src = useMobileSrc ? segment.mobileSrc : segment.videoSrc;
 
   return (
     <div
@@ -43,7 +48,10 @@ export default function Segment({ segment, index, avail }: Props) {
       {hasVideo && (
         // suppressHydrationWarning: пре-гидрационный скрипт может переключить
         // preload на auto до гидрации React
+        // key: смена ветки src (десктоп ↔ мобильный reframe) пересоздаёт
+        // элемент — иначе браузер не перечитает source
         <video
+          key={useMobileSrc ? "m" : "d"}
           muted
           playsInline
           preload="none"
@@ -51,7 +59,7 @@ export default function Segment({ segment, index, avail }: Props) {
           poster={hasPoster ? segment.posterSrc : undefined}
           className="absolute inset-0 h-full w-full object-cover"
         >
-          <source src={segment.videoSrc} type="video/mp4" />
+          <source src={src} type="video/mp4" />
         </video>
       )}
     </div>

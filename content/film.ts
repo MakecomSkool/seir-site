@@ -42,8 +42,14 @@ export type Segment = {
 
 // iOS-страховка (oneshot.md, раздел 9): переключает мобильную версию со
 // скраббинга на автоплей сегмента при входе в вьюпорт, если currentTime-
-// скраббинг дёргается на реальном устройстве. Пока не используется.
+// скраббинг дёргается на реальном устройстве. Проверять на живом iPhone.
 export const IOS_AUTOPLAY_FALLBACK = false;
+
+// Мобильная ветка (oneshot.md, раздел 9): скролл «длиннее» на палец —
+// таблица темпа умножается на 0.8; списки в плашке свёрнуты до 4 позиций.
+export const MOBILE_TEMPO = 0.8;
+export const MOBILE_LIST_LIMIT = 4;
+export const MOBILE_BREAKPOINT = "(max-width: 819px)";
 
 // Текстовый блок таймлайна: появляется на [fromT, toT] секундах глобального
 // времени, только opacity + translateY. kind "phase" — титр фазы поверх
@@ -77,10 +83,14 @@ export type FilmSectionId =
 
 export type FilmSection = { id: FilmSectionId; title: string; fromT: number };
 
-// Наличие медиафайлов сегмента: сервер проверяет public/video и public/poster,
-// сегмент без файлов рендерит градиент-заглушку и не делает ни одного запроса.
-// Формат один — mp4 (h264 all-intra); webm убран решением по батчу 2.
-export type SceneMediaAvailability = { mp4: boolean; poster: boolean };
+// Наличие медиафайлов сегмента: сервер проверяет public/video, public/poster
+// и public/video/mobile; сегмент без файлов рендерит градиент-заглушку и не
+// делает ни одного запроса. Формат один — mp4 (h264 all-intra).
+export type SceneMediaAvailability = {
+  mp4: boolean;
+  poster: boolean;
+  mobile: boolean; // 9:16 версия в public/video/mobile (reframe, раздел 9)
+};
 export type MediaAvailability = Record<string, SceneMediaAvailability>;
 
 // Метаданные сайта. layout.tsx берёт строки отсюда: тексты живут только в этом файле.
@@ -111,6 +121,9 @@ export const CHROME = {
   catalog: "До каталогу обладнання",
   status: "Система активна // ISO 9001 compliant",
   scrollHint: "прокрутіть",
+  // Мобильная плашка: раскрытие свёрнутых списков (аккордеон внутри плашки)
+  showAll: "Показати всі",
+  collapse: "Згорнути",
 };
 
 // Контакты — единый источник для финала фильма и секции «Взаємодія»

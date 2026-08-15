@@ -14,21 +14,32 @@ export type ChromeState = {
   section: number; // индекс текущего раздела фильма
   light: boolean; // светлая часть: инверсия цветов хрома
   scrolled: boolean; // скролл дальше 60px — прячем «прокрутіть»
+  progress: number; // 0..1 прогресс фильма — мобильная полоска пути
 };
 
 type Props = {
   sections: FilmSection[];
   mode: "film" | "vertical";
+  // Мобильный хром (oneshot.md, раздел 9): шкала пути — полоска 3px без
+  // подписей + бейдж текущего раздела сверху справа
+  mobile?: boolean;
   onNavigate: (target: FilmSectionId | SectionId) => void;
   // rAF-цикл FilmStage пушит состояние сюда, не перерисовывая сцены.
   register?: (setter: ((state: ChromeState) => void) | null) => void;
 };
 
-export default function Chrome({ sections, mode, onNavigate, register }: Props) {
+export default function Chrome({
+  sections,
+  mode,
+  mobile = false,
+  onNavigate,
+  register,
+}: Props) {
   const [state, setState] = useState<ChromeState>({
     section: 0,
     light: false,
     scrolled: false,
+    progress: 0,
   });
 
   useEffect(() => {
@@ -89,8 +100,27 @@ export default function Chrome({ sections, mode, onNavigate, register }: Props) 
         </button>
       </header>
 
-      {mode === "film" && (
+      {mode === "film" && !mobile && (
         <ActRail sections={sections} active={state.section} onSelect={onNavigate} />
+      )}
+
+      {mode === "film" && mobile && (
+        <>
+          {/* Полоска пути 3px без подписей, заполняется прогрессом фильма */}
+          <div
+            aria-hidden
+            className="fixed bottom-0 right-0 top-0 z-40 w-[3px] bg-[color-mix(in_srgb,var(--chrome-dim)_25%,transparent)]"
+          >
+            <div
+              className="w-full bg-[var(--gold)]"
+              style={{ height: `${(state.progress * 100).toFixed(1)}%` }}
+            />
+          </div>
+          {/* Бейдж текущего раздела сверху справа */}
+          <p className="chrome-shadow fixed right-4 top-16 z-40 rounded-full border border-[var(--chrome-dim)] px-3 py-1 font-mono text-[9px] uppercase tracking-[0.25em] text-[var(--chrome-ink)] transition-colors duration-500">
+            {sections[state.section]?.title}
+          </p>
+        </>
       )}
 
       <p className="chrome-shadow fixed bottom-5 left-6 z-40 font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--chrome-dim)] transition-colors duration-500">

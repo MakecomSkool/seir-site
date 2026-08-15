@@ -20,13 +20,16 @@ function listPublicDir(dir: string): Set<string> {
 function buildMediaAvailability(): MediaAvailability {
   const videos = listPublicDir("video");
   const posters = listPublicDir("poster");
+  const mobiles = listPublicDir("video/mobile");
   const media: MediaAvailability = {};
   for (const segment of SEGMENTS) {
     const mp4 = segment.videoSrc.split("/").pop() ?? "";
     const poster = segment.posterSrc.split("/").pop() ?? "";
+    const mobile = segment.mobileSrc.split("/").pop() ?? "";
     media[segment.id] = {
       mp4: videos.has(mp4),
       poster: posters.has(poster),
+      mobile: mobiles.has(mobile),
     };
   }
   return media;

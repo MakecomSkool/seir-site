@@ -18,6 +18,9 @@ import { PHASES } from "@/content/catalog";
 import {
   COPY,
   FILM_SECTIONS,
+  IOS_AUTOPLAY_FALLBACK,
+  MOBILE_BREAKPOINT,
+  MOBILE_TEMPO,
   PALETTES,
   SECTIONS,
   SEGMENTS,
@@ -30,6 +33,7 @@ import {
   type FilmSectionId,
   type MediaAvailability,
   type SectionId,
+  type Segment as SegmentConfig,
 } from "@/content/film";
 
 // Механика oneshot.md, раздел 6: один глобальный таймлайн, скролл скраббит
@@ -60,13 +64,31 @@ export default function FilmStage({ media }: { media?: MediaAvailability }) {
   const stageRef = useRef<HTMLDivElement>(null);
   const lenisRef = useRef<Lenis | null>(null);
   const chromeSetterRef = useRef<((state: ChromeState) => void) | null>(null);
-  const uiRef = useRef<ChromeState>({ section: 0, light: false, scrolled: false });
+  const uiRef = useRef<ChromeState>({
+    section: 0,
+    light: false,
+    scrolled: false,
+    progress: 0,
+  });
   const [reducedMotion, setReducedMotion] = useState(false);
+  // Мобильная ветка (oneshot.md, раздел 9): темп ×0.8 — скролл «длиннее»
+  // на палец; тексты в плашке, шкала полоской, свои 9:16 файлы.
+  const [mobileView, setMobileView] = useState(false);
 
-  const spans = useMemo(() => segmentSpans(SEGMENTS), []);
-  const totalVh = totalScrollVh(SEGMENTS);
-  const totalT = totalDuration(SEGMENTS);
-  const heightVh = stageHeightVh(SEGMENTS);
+  const activeSegments: SegmentConfig[] = useMemo(
+    () =>
+      mobileView
+        ? SEGMENTS.map((s) => ({
+            ...s,
+            scrollVh: Math.round(s.scrollVh * MOBILE_TEMPO),
+          }))
+        : SEGMENTS,
+    [mobileView],
+  );
+  const spans = useMemo(() => segmentSpans(activeSegments), [activeSegments]);
+  const totalVh = totalScrollVh(activeSegments);
+  const totalT = totalDuration(activeSegments);
+  const heightVh = stageHeightVh(activeSegments);
 
   const registerChrome = (setter: ((state: ChromeState) => void) | null) => {
     chromeSetterRef.current = setter;
@@ -126,6 +148,14 @@ export default function FilmStage({ media }: { media?: MediaAvailability }) {
   useEffect(() => {
     const query = window.matchMedia("(prefers-reduced-motion: reduce)");
     const sync = () => setReducedMotion(query.matches);
+    sync();
+    query.addEventListener("change", sync);
+    return () => query.removeEventListener("change", sync);
+  }, []);
+
+  useEffect(() => {
+    const query = window.matchMedia(MOBILE_BREAKPOINT);
+    const sync = () => setMobileView(query.matches);
     sync();
     query.addEventListener("change", sync);
     return () => query.removeEventListener("change", sync);
@@ -275,7 +305,17 @@ export default function FilmStage({ media }: { media?: MediaAvailability }) {
           video.load();
         }
         if (!seg.mediaActive) continue;
-        if (i === active) {
+        if (IOS_AUTOPLAY_FALLBACK && mobileView) {
+          // iOS-страховка: вместо скраббинга — автоплей активного сегмента
+          // при входе в вьюпорт (включается флагом после проверки на живом
+          // iPhone, если currentTime-скраббинг дёргается)
+          if (i === active) {
+            if (video.paused) video.play().catch(() => {});
+          } else if (!video.paused) {
+            video.pause();
+            seekTo(seg, i < active ? seg.span.duration : 0);
+          }
+        } else if (i === active) {
           seg.pendingTime = null;
           seekTo(seg, t - seg.span.tStart);
         } else {
@@ -317,12 +357,16 @@ export default function FilmStage({ media }: { media?: MediaAvailability }) {
         light:
           t >= TIMELINE.chromeLight.fromT && t < TIMELINE.chromeLight.toT,
         scrolled: window.scrollY > SCROLL_HINT_PX,
+        // Прогресс фильма для мобильной полоски пути; шаг 0.005 —
+        // чтобы не дёргать React каждый кадр
+        progress: Math.round((t / totalT) * 200) / 200,
       };
       const prev = uiRef.current;
       if (
         next.section !== prev.section ||
         next.light !== prev.light ||
-        next.scrolled !== prev.scrolled
+        next.scrolled !== prev.scrolled ||
+        next.progress !== prev.progress
       ) {
         uiRef.current = next;
         chromeSetterRef.current?.(next);
@@ -389,7 +433,7 @@ export default function FilmStage({ media }: { media?: MediaAvailability }) {
         seg.video?.pause();
       });
     };
-  }, [reducedMotion, spans, totalVh, totalT]);
+  }, [reducedMotion, mobileView, spans, totalVh, totalT]);
 
   // prefers-reduced-motion: покадровая вертикальная версия — ключевые кадры
   // сегментов как постеры, тексты в потоке, обычный скролл. Полноценная
@@ -464,17 +508,19 @@ export default function FilmStage({ media }: { media?: MediaAvailability }) {
               segment={span}
               index={index}
               avail={media?.[span.id]}
+              mobile={mobileView}
             />
           ))}
           {/* Оверлеи фронта поверх видео; контур Украины и огни — в самом
               футаже (K00b), кодом не дублируются */}
           <CatCards />
-          <TimedCopy blocks={COPY} layout="film" onCta={onCta} />
+          <TimedCopy blocks={COPY} layout="film" mobile={mobileView} onCta={onCta} />
         </div>
       </div>
       <Chrome
         sections={FILM_SECTIONS}
         mode="film"
+        mobile={mobileView}
         onNavigate={navigate}
         register={registerChrome}
       />
@@ -493,7 +539,7 @@ export default function FilmStage({ media }: { media?: MediaAvailability }) {
           navigate(SECTIONS.catalog.id);
         }}
       />
-      <PhaseBar labels={PHASES.map((phase) => phase.code)} />
+      <PhaseBar labels={PHASES.map((phase) => phase.code)} mobile={mobileView} />
     </>
   );
 }
