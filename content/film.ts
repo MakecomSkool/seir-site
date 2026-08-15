@@ -78,7 +78,8 @@ export type FilmSection = { id: FilmSectionId; title: string; fromT: number };
 
 // Наличие медиафайлов сегмента: сервер проверяет public/video и public/poster,
 // сегмент без файлов рендерит градиент-заглушку и не делает ни одного запроса.
-export type SceneMediaAvailability = { mp4: boolean; webm: boolean; poster: boolean };
+// Формат один — mp4 (h264 all-intra); webm убран решением по батчу 2.
+export type SceneMediaAvailability = { mp4: boolean; poster: boolean };
 export type MediaAvailability = Record<string, SceneMediaAvailability>;
 
 // Метаданные сайта. layout.tsx берёт строки отсюда: тексты живут только в этом файле.

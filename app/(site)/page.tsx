@@ -26,7 +26,6 @@ function buildMediaAvailability(): MediaAvailability {
     const poster = segment.posterSrc.split("/").pop() ?? "";
     media[segment.id] = {
       mp4: videos.has(mp4),
-      webm: videos.has(mp4.replace(/\.mp4$/, ".webm")),
       poster: posters.has(poster),
     };
   }

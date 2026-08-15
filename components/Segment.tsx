@@ -17,9 +17,7 @@ type Props = {
 // никаких transform и blur; на границе сегментов rAF-цикл делает жёсткую
 // подмену visibility — оба видео в граничный момент показывают один кадр.
 export default function Segment({ segment, index, avail }: Props) {
-  const hasWebm = avail ? avail.webm : true;
-  const hasMp4 = avail ? avail.mp4 : true;
-  const hasVideo = hasWebm || hasMp4;
+  const hasVideo = avail ? avail.mp4 : true;
   const hasPoster = avail ? avail.poster : true;
 
   return (
@@ -53,13 +51,7 @@ export default function Segment({ segment, index, avail }: Props) {
           poster={hasPoster ? segment.posterSrc : undefined}
           className="absolute inset-0 h-full w-full object-cover"
         >
-          {hasWebm && (
-            <source
-              src={segment.videoSrc.replace(/\.mp4$/, ".webm")}
-              type="video/webm"
-            />
-          )}
-          {hasMp4 && <source src={segment.videoSrc} type="video/mp4" />}
+          <source src={segment.videoSrc} type="video/mp4" />
         </video>
       )}
     </div>

@@ -141,7 +141,8 @@ titleAccent цветом --dim), опционально body как список
 Замени градиенты-заглушки на video.
 
 Каждая сцена: <video muted playsInline preload="none" poster={posterSrc}>
-с двумя source, mp4 и webm.
+с одним source — mp4 (h264 all-intra; webm убран решением по батчу 2:
+vp9 при -g 1 тяжелее h264).
 
 playback === 'scrub': локальный прогресс lp = clamp(d + 0.5, 0, 1),
 video.currentTime = lp * duration, обновление в requestAnimationFrame.
@@ -239,20 +240,17 @@ if not exist public\poster mkdir public\poster
 
 for %%f in (raw\scrub_*.mp4) do (
   echo all-intra %%~nf
-  ffmpeg -y -v error -i "%%f" -c:v libx264 -preset slow -crf 21 -g 1 -keyint_min 1 ^
+  ffmpeg -y -v error -i "%%f" -c:v libx264 -preset slow -crf 23 -g 1 -keyint_min 1 ^
     -sc_threshold 0 -pix_fmt yuv420p -an -movflags +faststart ^
-    -vf scale=1600:-2 "public\video\%%~nf.mp4"
-  ffmpeg -y -v error -i "%%f" -c:v libvpx-vp9 -crf 32 -b:v 0 -g 1 -an ^
-    -vf scale=1600:-2 "public\video\%%~nf.webm"
+    -vf "hqdn3d=2:1.5:3:2.5,scale=1600:-2" "public\video\%%~nf.mp4"
   ffmpeg -y -v error -i "%%f" -vframes 1 -q:v 3 -vf scale=1200:-2 "public\poster\%%~nf.webp"
 )
 
 for %%f in (raw\auto_*.mp4) do (
   echo standard %%~nf
   ffmpeg -y -v error -i "%%f" -c:v libx264 -preset slow -crf 23 -pix_fmt yuv420p ^
-    -an -movflags +faststart -vf scale=1600:-2 "public\video\%%~nf.mp4"
-  ffmpeg -y -v error -i "%%f" -c:v libvpx-vp9 -crf 34 -b:v 0 -an ^
-    -vf scale=1600:-2 "public\video\%%~nf.webm"
+    -an -movflags +faststart -vf "hqdn3d=2:1.5:3:2.5,scale=1600:-2" ^
+    "public\video\%%~nf.mp4"
   ffmpeg -y -v error -i "%%f" -vframes 1 -q:v 3 -vf scale=1200:-2 "public\poster\%%~nf.webp"
 )
 echo Done.
