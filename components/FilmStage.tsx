@@ -14,6 +14,7 @@ import {
   type ActId,
   type Axis,
   type Cta,
+  type Playback,
 } from "@/content/film";
 
 // Фазовая перебивка: проявляется в хвосте предыдущей сцены (d от -CARD_IN до 0),
@@ -27,6 +28,24 @@ const BLUR_MIN_OPACITY = 0.15;
 
 // Скролл дальше этого порога прячет подсказку «прокрутіть».
 const SCROLL_HINT_PX = 60;
+
+// Загрузка видео актами: активируем, когда до сцены меньше двух сегментов
+// (сцена + перебивка), и держим, пока сцена не ушла дальше полутора сегментов.
+// За пределами RELEASE-порога буферы и декодер освобождаются (лимит
+// одновременных медиаплееров на iOS).
+const MEDIA_ON_FROM = -2;
+const MEDIA_ON_TO = 1.5;
+const MEDIA_RELEASE = 3;
+
+// Скраббинг: сик только в видимой зоне, цель квантуется к сетке кадров,
+// новый сик не выдаётся, пока идёт предыдущий (очереди сиков душат WebKit).
+const SCRUB_RANGE = 1.0;
+const FRAME_STEP = 1 / 30;
+
+// Автоплей с гистерезисом: play при входе в вьюпорт, pause и сброс — при выходе.
+const AUTOPLAY_IN = 0.55;
+const AUTOPLAY_OUT = 0.8;
+const PLAY_RETRY_MS = 1500;
 
 // Тексты сцены уходят быстрее кадра и слегка съезжают вверх (build.md, шаг 4).
 // visibility прячет невидимую копию из hit-testing: без этого прозрачная CTA
@@ -171,10 +190,21 @@ export default function FilmStage({ film }: { film: ActConfig[] }) {
           sibling instanceof HTMLElement && sibling.hasAttribute("data-scene-copy")
             ? sibling
             : null,
+        video: el.querySelector<HTMLVideoElement>("video"),
         kind: el.dataset.seg as "card" | "scene",
         axis: el.dataset.axis as Axis,
+        playback: el.dataset.playback as Playback,
+        duration: Number(el.dataset.duration),
+        scrubFrom: Number(el.dataset.scrubFrom),
+        scrubTo: Number(el.dataset.scrubTo),
+        holdFrom: Number(el.dataset.holdFrom || 0),
+        holdTo: Number(el.dataset.holdTo || 0),
         startVh: Number(el.dataset.startVh),
         lenVh: Number(el.dataset.lenVh),
+        mediaActive: false,
+        playing: false,
+        retryAfter: 0,
+        pendingTime: null as number | null,
       };
     });
     const backdrop = stage.querySelector<HTMLElement>("[data-film-backdrop]");
@@ -211,6 +241,30 @@ export default function FilmStage({ film }: { film: ActConfig[] }) {
     window.addEventListener("resize", onResize);
 
     let lastPosVh = -1;
+    const retryTimers: number[] = [];
+    // Видео догрузилось при неподвижном скролле — ранний выход applyScroll
+    // оставил бы его на нулевом кадре; сбрасываем кэш позиции.
+    const invalidate = () => {
+      lastPosVh = -1;
+    };
+    // Отложенный сик: пока браузер обрабатывает предыдущий, цель копится
+    // в pendingTime и доотправляется по событию seeked.
+    const flushPending = (seg: (typeof segments)[number]) => () => {
+      const video = seg.video;
+      if (!video || video.seeking || seg.pendingTime === null) return;
+      const target = seg.pendingTime;
+      seg.pendingTime = null;
+      if (Math.abs(video.currentTime - target) > FRAME_STEP / 2) {
+        video.currentTime = target;
+      }
+    };
+    const seekedHandlers = segments.map(flushPending);
+    segments.forEach((seg, index) => {
+      seg.video?.addEventListener("loadeddata", invalidate);
+      seg.video?.addEventListener("loadedmetadata", invalidate);
+      seg.video?.addEventListener("seeked", seekedHandlers[index]);
+    });
+
     const applyScroll = () => {
       if (!vhUnit) return;
       const posVh = Math.max(0, window.scrollY) / vhUnit;
@@ -236,8 +290,82 @@ export default function FilmStage({ film }: { film: ActConfig[] }) {
           seg.el.style.opacity = String(opacity);
           seg.el.style.visibility = opacity <= 0 ? "hidden" : "visible";
         } else {
-          applyAxis(seg.el, seg.axis, d);
-          if (seg.copy) applyCopy(seg.copy, d);
+          // Окно удержания оси: внутри [holdFrom, holdTo] сцена стоит в покое,
+          // осевые формулы применяются к выходу за окно (проезд акта II).
+          const dAxis = d < seg.holdFrom ? d - seg.holdFrom : d > seg.holdTo ? d - seg.holdTo : 0;
+          applyAxis(seg.el, seg.axis, dAxis);
+          if (seg.copy) applyCopy(seg.copy, dAxis);
+
+          const video = seg.video;
+          if (video) {
+            // Загрузка актами, окно ограничено с обеих сторон; explicit load() —
+            // iOS считает preload хинтом и без пинка не грузит ничего.
+            if (!seg.mediaActive && d > MEDIA_ON_FROM && d < seg.holdTo + MEDIA_ON_TO) {
+              seg.mediaActive = true;
+              video.preload = "auto";
+              if (video.readyState === 0) video.load();
+            } else if (
+              seg.mediaActive &&
+              (d < MEDIA_ON_FROM - 1 || d > seg.holdTo + MEDIA_RELEASE)
+            ) {
+              // Далеко позади или впереди: освобождаем буферы и декодер
+              seg.mediaActive = false;
+              seg.playing = false;
+              seg.pendingTime = null;
+              video.pause();
+              video.preload = "none";
+              video.load();
+            }
+
+            if (seg.playback === "scrub") {
+              // Кадр привязан к скроллу; пока метаданных нет — кадр пропускается.
+              // Сик квантуется к сетке кадров и не выдаётся поверх текущего.
+              if (
+                video.readyState >= 1 &&
+                d > seg.holdFrom - SCRUB_RANGE &&
+                d < seg.holdTo + SCRUB_RANGE
+              ) {
+                const lp = clamp01((d - seg.scrubFrom) / (seg.scrubTo - seg.scrubFrom));
+                let time = Math.round((lp * seg.duration) / FRAME_STEP) * FRAME_STEP;
+                if (Number.isFinite(video.duration)) {
+                  time = Math.min(time, Math.max(0, video.duration - FRAME_STEP));
+                }
+                if (Math.abs(video.currentTime - time) > FRAME_STEP / 2) {
+                  if (video.seeking) seg.pendingTime = time;
+                  else {
+                    seg.pendingTime = null;
+                    video.currentTime = time;
+                  }
+                } else {
+                  // Цель уже достигнута (или сик к ней в полёте) — устаревшая
+                  // отложенная цель не должна досылаться по seeked
+                  seg.pendingTime = null;
+                }
+              }
+            } else if (seg.mediaActive) {
+              // Автоплей: один прогон при входе сцены в вьюпорт, сброс при
+              // выходе; отклонённый play() (iOS Low Power) ретраится с паузой.
+              const distance = Math.abs(d);
+              if (
+                !seg.playing &&
+                distance < AUTOPLAY_IN &&
+                performance.now() >= seg.retryAfter
+              ) {
+                seg.playing = true;
+                video.play().catch(() => {
+                  seg.playing = false;
+                  seg.retryAfter = performance.now() + PLAY_RETRY_MS;
+                  // Будим цикл после паузы: иначе ранний выход по lastPosVh
+                  // не даст ретраю случиться, пока скролл неподвижен
+                  retryTimers.push(window.setTimeout(invalidate, PLAY_RETRY_MS + 50));
+                });
+              } else if (seg.playing && distance > AUTOPLAY_OUT) {
+                seg.playing = false;
+                video.pause();
+                video.currentTime = 0;
+              }
+            }
+          }
         }
       }
 
@@ -284,6 +412,13 @@ export default function FilmStage({ film }: { film: ActConfig[] }) {
       cancelAnimationFrame(frame);
       lenisRef.current = null;
       lenis.destroy();
+      retryTimers.forEach((timer) => window.clearTimeout(timer));
+      segments.forEach((seg, index) => {
+        seg.video?.removeEventListener("loadeddata", invalidate);
+        seg.video?.removeEventListener("loadedmetadata", invalidate);
+        seg.video?.removeEventListener("seeked", seekedHandlers[index]);
+        seg.video?.pause();
+      });
     };
   }, [film, reducedMotion, heightVh]);
 

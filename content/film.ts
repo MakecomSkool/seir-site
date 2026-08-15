@@ -29,6 +29,13 @@ export type Scene = {
   services?: string[];
   cats?: string[]; // ['CAT-03', 'CAT-07']
   counter?: { from: string; to: string; caption: string }; // счётчик вида «0,00 с → 0,12 с»
+  // Окно скраббинга в единицах дельты d: видео проигрывается от w0 до w1.
+  // По умолчанию [-0.5, 0.5] — пик сцены приходится на середину ролика.
+  scrubWindow?: [number, number];
+  // Окно удержания оси: пока d внутри окна, сцена стоит в покое (transform и
+  // opacity в нуле), осевые формулы применяются к выходу за окно. По умолчанию
+  // [0, 0] — обычное поведение. Нужен длинным сценам вроде проезда акта II.
+  axisHold?: [number, number];
   overlay?: Overlay;
   cta?: Cta;
 };
@@ -202,6 +209,12 @@ export const FILM: Act[] = [
         posterSrc: "/poster/scrub_ii.webp",
         duration: 24,
         scrollVh: 300,
+        // Ровный проезд: время ролика линейно по всем 300vh собственного хода
+        // сцены, от открытия из перебивки до прихода следующей. Кадр при этом
+        // стоит на месте (axisHold) — вбок едет камера в самом видео, а въезд
+        // и выезд по оси lateral происходят через соседние перебивки.
+        scrubWindow: [0, 1],
+        axisHold: [0, 1],
         eyebrow: "",
         titleMain: "",
         titleAccent: "",
@@ -337,6 +350,9 @@ export const FILM: Act[] = [
         posterSrc: "/poster/scrub_ep.webp",
         duration: 8,
         scrollVh: 120,
+        // Взлёт играет, пока растворяется перебивка «ФАЗА 05» (d от -0.5 до 0);
+        // на дне страницы фильм отдыхает на финальном кадре — орбите в огнях.
+        scrubWindow: [-0.5, 0],
         eyebrow: "SYSTEM LINK ESTABLISHED",
         titleMain: "Взаємодія",
         titleAccent: "Очікуємо на вхідний запит",

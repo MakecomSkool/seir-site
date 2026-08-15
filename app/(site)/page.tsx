@@ -9,6 +9,7 @@ import { FILM } from "@/content/film";
 // Дублирует формулы осей из FilmStage — синхронизировать.
 const preHydration = `(function(){
 var w=document.querySelector('[data-film-total]');if(!w)return;
+var rm=false;try{rm=matchMedia('(prefers-reduced-motion: reduce)').matches}catch(_){}
 function c(v){return Math.min(1,Math.max(0,v))}
 function A(){
 if(!w.isConnected||w.getAttribute('data-film-live')){removeEventListener('scroll',A);return}
@@ -19,17 +20,20 @@ var n=els.length,p=n,i,s,l;
 for(i=0;i<n;i++){s=+els[i].getAttribute('data-start-vh');l=+els[i].getAttribute('data-len-vh');
 if(y<s+l){p=i+Math.max(0,y-s)/l;break;}}
 for(i=0;i<n;i++){var e=els[i],d=p-i,k=e.getAttribute('data-seg'),a=e.getAttribute('data-axis');
+var hf=+(e.getAttribute('data-hold-from')||0),ht=+(e.getAttribute('data-hold-to')||0);
+var da=d<hf?d-hf:d>ht?d-ht:0;
 var o=0,t='',b=0;
 if(k==='card'){o=c(Math.min(1+d/0.35,(1-d)/0.5));}
-else if(a==='fall'){o=c(1-Math.abs(d)*1.35);t='scale('+(1+d*0.46)+')';b=(1-o)*7;}
-else if(a==='lateral'){o=c(1-Math.abs(d)*1.1);t='translateX('+(-d*100)+'vw) scale(1.04)';}
-else if(a==='rise'){o=c(1-Math.abs(d)*1.35);t='translateY('+(d*26)+'vh) scale('+(1-d*0.18)+')';b=(1-o)*5;}
-else{o=c(1-Math.abs(d)*1.9);t='scale('+(1+d*0.06)+')';}
+else if(a==='fall'){o=c(1-Math.abs(da)*1.35);t='scale('+(1+da*0.46)+')';b=(1-o)*7;}
+else if(a==='lateral'){o=c(1-Math.abs(da)*1.1);t='translateX('+(-da*100)+'vw) scale(1.04)';}
+else if(a==='rise'){o=c(1-Math.abs(da)*1.35);t='translateY('+(da*26)+'vh) scale('+(1-da*0.18)+')';b=(1-o)*5;}
+else{o=c(1-Math.abs(da)*1.9);t='scale('+(1+da*0.06)+')';}
+if(k==='scene'&&!rm&&d>-2&&d<ht+1.5){var v=e.querySelector('video');if(v)v.setAttribute('preload','auto');}
 var cp=e.nextElementSibling;
 if(cp&&cp.hasAttribute&&cp.hasAttribute('data-scene-copy')){
-var co=c(1-Math.abs(d)*2.1);cp.style.opacity=co;
+var co=c(1-Math.abs(da)*2.1);cp.style.opacity=co;
 cp.style.visibility=co<=0?'hidden':'visible';
-cp.style.transform='translateY('+(d*-34)+'px)';}
+cp.style.transform='translateY('+(da*-34)+'px)';}
 if(o<=0){e.style.opacity='0';e.style.visibility='hidden';e.style.filter='';continue}
 e.style.opacity=o;e.style.visibility='visible';e.style.transform=t;
 e.style.filter=(o>=0.15&&b>0.05)?'blur('+b.toFixed(2)+'px)':'';}

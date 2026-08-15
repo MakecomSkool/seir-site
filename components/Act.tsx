@@ -28,6 +28,7 @@ export default function Act({ act, startVh, withCard, firstAct, layout, onCta }:
             scene={scene}
             axis={act.axis}
             palette={act.palette}
+            playback={act.playback}
             startVh={0}
             first={firstAct && index === 0}
             layout="vertical"
@@ -59,6 +60,7 @@ export default function Act({ act, startVh, withCard, firstAct, layout, onCta }:
             scene={scene}
             axis={act.axis}
             palette={act.palette}
+            playback={act.playback}
             startVh={sceneStartVh}
             first={firstAct && index === 0}
             layout="film"
