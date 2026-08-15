@@ -96,14 +96,20 @@ trees along a road
 
 ## 4. Кадры K00-K20
 
-**K00. Орбіта, ніч.** Контур Украины и огни рисует фронт (UkraineMap.tsx),
-видео даёт лимб, атмосферу, звёзды. Огней мало — страна ещё «не зажжена».
+**K00. Орбіта, ніч.** Видео даёт лимб, атмосферу, звёзды. Огней мало —
+страна ещё «не зажжена»; контур приходит в K00b, в самом футаже.
 ```
 View of Earth from low orbit at night, curved limb across the lower third,
 thin luminous blue atmospheric glow, faint stars. The dark landmass below
 carries sparse scattered warm city lights, thin clouds catching the glow.
 + тёмный хвост
 ```
+
+**K00b. Карта України з орбіти.** ГОТОВЫЙ КАДР, принесён пользователем:
+job 04a1cf34-df1f-4264-a085-3aea969ac2e9 (gpt_image_2). Вид из космоса на
+Украину ночью, золотой светящийся контур страны С КРЫМОМ, огни городов,
+Київ читается ярчайшим пятном. Не перегенерировать. Контур живёт в видео —
+кодом не дублируется (UkraineMap удалён).
 
 **K01. Високо над Україною, поля і ріка внизу.** Ключевой кадр спуска:
 камера ещё НЕ вошла в облака, пейзаж читается сверху. Тихий стык №1 —
@@ -285,7 +291,8 @@ speedramp linear, cfg_scale 0.35. Длительность 8 c, где не ук
 
 | V | start→end | Движение |
 |---|---|---|
-| V01 | K00→K01 | `The camera drifts slowly in orbit above the night Earth, then tips forward and begins a long descent, the landscape with fields and the river resolving far below. One continuous move.` |
+| V01a | K00→K00b | `The camera drifts slowly over the night side of Earth and turns toward Ukraine, the country's glowing outline coming into full view and settling in the centre of frame. Extremely slow orbital movement, no shake.` |
+| V01b | K00b→K01 | `The camera begins to descend toward the outlined country, the glowing border expanding beyond the edges of frame as the surface rushes closer, the landscape resolving into a river, fields and village lights. One continuous accelerating descent, no cuts.` |
 | V02 | K01→K02 | `The camera dives from high altitude, passes through a thin cloud layer that briefly fills the frame, and descends toward a lit service yard, landing at eye level beside the transformer. One continuous descent.` |
 | V03 | K02→K03 | `The camera moves toward the warm open door of the workshop and passes through it into the repair bay, arriving at the disassembled transformer. Steady continuous move.` |
 | V04 | K03→K04 | `The camera moves through the open gate out into the rain, tracking along the low-loader trailer into the supply yard. Steady continuous move.` |
@@ -335,7 +342,8 @@ very slightly curved. + тёмный хвост
 
 | V | с | vh/с | vh | почему |
 |---|---|---|---|---|
-| V01 | 8 | 10 | 80 | транзит, заголовок короткий |
+| V01a | 8 | 10 | 80 | транзит, заголовок короткий |
+| V01b | 8 | 9 | 72 | ключевой момент фильма: спуск к контуру, нужен воздух |
 | V02 | 8 | 10 | 80 | транзит |
 | V03 | 8 | 14 | 112 | списки «Технічне обслуговування» |
 | V04 | 8 | 14 | 112 | списки «Модернізація», счётчик аварии |
@@ -355,7 +363,7 @@ very slightly curved. + тёмный хвост
 | V18 | 5 | 14 | 70 | PHASE 03→04 |
 | V19 | 6 | 10 | 60 | отъезд к окну, титр фазы |
 | V20 | 10 | 8 | 80 | финальный подъём, контакты |
-| **Σ** | **147** | | **~1750vh** | |
+| **Σ** | **155** | | **~1822vh** | |
 
 Столбцы «с» и «vh» живут в конфиге сегмента (duration, scrollVh),
 пересчёт высоты страницы автоматический.
@@ -373,7 +381,8 @@ very slightly curved. + тёмный хвост
    (encode.bat = build.md §9). webm убран: vp9 при -g 1 тяжелее h264.
 6. prefers-reduced-motion: покадровая версия — 21 ключевой кадр как постеры,
    обычный скролл.
-7. UkraineMap.tsx (контур + огни) поверх V01 и V20.
+7. Контур Украины и огни живут в самом видео (K00b) — кодом не дублируются,
+   UkraineMap.tsx удалён: рисованный слой и футаж неизбежно разошлись бы.
 
 ---
 

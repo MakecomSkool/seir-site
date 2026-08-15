@@ -8,7 +8,6 @@ import Chrome, { type ChromeState } from "@/components/Chrome";
 import PhaseBar from "@/components/PhaseBar";
 import Segment from "@/components/Segment";
 import TimedCopy, { CopyBlockView } from "@/components/TimedCopy";
-import UkraineMap from "@/components/UkraineMap";
 import { openLeadPanel, subscribeLeadPanel } from "@/components/leadBus";
 import type {
   CatTagNode,
@@ -430,7 +429,6 @@ export default function FilmStage({ media }: { media?: MediaAvailability }) {
                     className="absolute inset-0 h-full w-full object-cover"
                   />
                 )}
-                {index === 0 && <UkraineMap staticLit />}
               </div>
               {blocks.map((block) => (
                 <div
@@ -468,8 +466,8 @@ export default function FilmStage({ media }: { media?: MediaAvailability }) {
               avail={media?.[span.id]}
             />
           ))}
-          {/* Оверлеи рисует фронт поверх видео — принципиально не в видео */}
-          <UkraineMap />
+          {/* Оверлеи фронта поверх видео; контур Украины и огни — в самом
+              футаже (K00b), кодом не дублируются */}
           <CatCards />
           <TimedCopy blocks={COPY} layout="film" onCta={onCta} />
         </div>

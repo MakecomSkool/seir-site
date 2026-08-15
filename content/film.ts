@@ -1,5 +1,6 @@
 // SEIR — единый конфиг фильма. Сценарий: docs/oneshot.md.
-// Один глобальный таймлайн: 20 видеосегментов V01-V20, скролл скраббит время.
+// Один глобальный таймлайн: 21 видеосегмент V01a-V20, скролл скраббит время.
+// Контур Украины и огни живут в самом видео (кадр K00b) — кодом не рисуются.
 // Темп задаёт столбец vh/с таблицы раздела 6 oneshot.md: duration и scrollVh
 // каждого сегмента, высота страницы считается из них автоматически.
 // Все тексты, тайминги, цвета и пути к видео правятся только здесь.
@@ -210,26 +211,28 @@ const seg = (
 // Таблица темпа из oneshot.md, раздел 6: длительность с × vh/с = vh.
 // Спидрамп всего фильма живёт в скролле, видео всегда linear.
 export const SEGMENTS: Segment[] = [
-  seg("v01", 8, 80, "cold"), //  0-8    орбита, дрейф          10 vh/с
-  seg("v02", 8, 80, "cold"), //  8-16   падение сквозь облако  10
-  seg("v03", 8, 112, "steel"), // 16-24  двор → бокс           14
-  seg("v04", 8, 112, "steel"), // 24-32  бокс → дождь          14
-  seg("v05", 8, 96, "black"), // 32-40  двор → порог ангара    12
-  seg("v06", 8, 120, "black", CATALOG.slice(0, 4).map((c) => c.code)), // 40-48
-  seg("v07", 8, 120, "black", CATALOG.slice(4, 7).map((c) => c.code)), // 48-56
-  seg("v08", 8, 120, "black", CATALOG.slice(7, 9).map((c) => c.code)), // 56-64
-  seg("v09", 8, 80, "dawn"), // 64-72  подъём сквозь люк       10
-  seg("v10", 8, 96, "dawn"), // 72-80  электростанция          12
-  seg("v11", 8, 96, "dawn"), // 80-88  подстанция              12
-  seg("v12", 8, 96, "dawn"), // 88-96  завод                   12
-  seg("v13", 8, 96, "dawn"), // 96-104 инфраструктура          12
-  seg("v14", 6, 48, "white"), // 104-110 белая хмара            8
-  seg("v15", 6, 48, "white"), // 110-116 вход в лабораторию     8
-  seg("v16", 5, 70, "white"), // 116-121 стол документации     14
-  seg("v17", 5, 70, "white"), // 121-126 испытательная зона    14
-  seg("v18", 5, 70, "white"), // 126-131 макро муфты           14
-  seg("v19", 6, 60, "white"), // 131-137 отъезд к окну         10
-  seg("v20", 10, 80, "cold"), // 137-147 финальный подъём       8
+  seg("v01a", 8, 80, "cold"), //  0-8    орбита → контур Украины (K00b) 10 vh/с
+  // Ключевой момент фильма: спуск к контуру, ему нужен воздух — темп 9
+  seg("v01b", 8, 72, "cold"), //  8-16   спуск от контура к пейзажу     9
+  seg("v02", 8, 80, "cold"), // 16-24   падение сквозь облако          10
+  seg("v03", 8, 112, "steel"), // 24-32  двор → бокс           14
+  seg("v04", 8, 112, "steel"), // 32-40  бокс → дождь          14
+  seg("v05", 8, 96, "black"), // 40-48  двор → порог ангара    12
+  seg("v06", 8, 120, "black", CATALOG.slice(0, 4).map((c) => c.code)), // 48-56
+  seg("v07", 8, 120, "black", CATALOG.slice(4, 7).map((c) => c.code)), // 56-64
+  seg("v08", 8, 120, "black", CATALOG.slice(7, 9).map((c) => c.code)), // 64-72
+  seg("v09", 8, 80, "dawn"), // 72-80  подъём сквозь люк       10
+  seg("v10", 8, 96, "dawn"), // 80-88  электростанция          12
+  seg("v11", 8, 96, "dawn"), // 88-96  подстанция              12
+  seg("v12", 8, 96, "dawn"), // 96-104  завод                   12
+  seg("v13", 8, 96, "dawn"), // 104-112 инфраструктура          12
+  seg("v14", 6, 48, "white"), // 112-118 белая хмара            8
+  seg("v15", 6, 48, "white"), // 118-124 вход в лабораторию     8
+  seg("v16", 5, 70, "white"), // 124-129 стол документации     14
+  seg("v17", 5, 70, "white"), // 129-134 испытательная зона    14
+  seg("v18", 5, 70, "white"), // 134-139 макро муфты           14
+  seg("v19", 6, 60, "white"), // 139-145 отъезд к окну         10
+  seg("v20", 10, 80, "cold"), // 145-155 финальный подъём       8
 ];
 
 // Производные таймлайна. Меняются только через SEGMENTS.
@@ -255,11 +258,11 @@ export const segmentSpans = (segments: Segment[] = SEGMENTS): SegmentSpan[] => {
 // Разделы фильма на таймлайне (oneshot.md, раздел 2).
 export const FILM_SECTIONS: FilmSection[] = [
   { id: "prologue", title: "Орбіта", fromT: 0 },
-  { id: "solutions", title: "Наші рішення", fromT: 16 },
-  { id: "equipment", title: "Обладнання", fromT: 32 },
-  { id: "expertise", title: "Експертиза", fromT: 64 },
-  { id: "quality", title: "Якість", fromT: 104 },
-  { id: "epilogue", title: "Взаємодія", fromT: 131 },
+  { id: "solutions", title: "Наші рішення", fromT: 24 },
+  { id: "equipment", title: "Обладнання", fromT: 40 },
+  { id: "expertise", title: "Експертиза", fromT: 72 },
+  { id: "quality", title: "Якість", fromT: 112 },
+  { id: "epilogue", title: "Взаємодія", fromT: 139 },
 ];
 
 // Титры фаз идут поверх движения, в моменты тихого заполнения проёма
@@ -280,15 +283,15 @@ export const COPY: CopyBlock[] = [
   {
     id: "phase01",
     kind: "phase",
-    fromT: 8.3,
-    toT: 11.2,
+    fromT: 16.4,
+    toT: 19.4,
     label: "// ФАЗА 01 · НАШІ РІШЕННЯ · SERVICE INDEX",
   },
   {
     id: "maintenance",
     kind: "copy",
-    fromT: 16.8,
-    toT: 23.2,
+    fromT: 24.8,
+    toT: 31.2,
     eyebrow: "01",
     titleMain: "Технічне",
     titleAccent: "обслуговування",
@@ -298,8 +301,8 @@ export const COPY: CopyBlock[] = [
   {
     id: "repair",
     kind: "copy",
-    fromT: 24.8,
-    toT: 31.2,
+    fromT: 32.8,
+    toT: 39.2,
     eyebrow: "02",
     titleMain: "Модернізація",
     titleAccent: "та ремонт",
@@ -311,8 +314,8 @@ export const COPY: CopyBlock[] = [
   {
     id: "supply",
     kind: "copy",
-    fromT: 32.6,
-    toT: 37.6,
+    fromT: 40.6,
+    toT: 45.6,
     eyebrow: "03",
     titleMain: "Постачання",
     titleAccent: "обладнання",
@@ -322,23 +325,23 @@ export const COPY: CopyBlock[] = [
   {
     id: "phase02",
     kind: "phase",
-    fromT: 38.2,
-    toT: 41.4,
+    fromT: 46.2,
+    toT: 49.4,
     label: "// ФАЗА 02 · ОБЛАДНАННЯ · CAT REGISTRY",
   },
   // 40-64: проезд по ангару — тексты рисует карточный слой CAT (CatCards)
   {
     id: "phase03",
     kind: "phase",
-    fromT: 64.4,
-    toT: 67.8,
+    fromT: 72.4,
+    toT: 75.8,
     label: "// ФАЗА 03 · ЕКСПЕРТИЗА · OBJECT CLASSES",
   },
   {
     id: "exp1",
     kind: "copy",
-    fromT: 72.8,
-    toT: 79.2,
+    fromT: 80.8,
+    toT: 87.2,
     eyebrow: EXPERTISE[0].num,
     titleMain: "Генерація",
     titleAccent: "енергії",
@@ -347,8 +350,8 @@ export const COPY: CopyBlock[] = [
   {
     id: "exp2",
     kind: "copy",
-    fromT: 80.8,
-    toT: 87.2,
+    fromT: 88.8,
+    toT: 95.2,
     eyebrow: EXPERTISE[1].num,
     titleMain: "Підстанції",
     titleAccent: "та мережі",
@@ -357,8 +360,8 @@ export const COPY: CopyBlock[] = [
   {
     id: "exp3",
     kind: "copy",
-    fromT: 88.8,
-    toT: 95.2,
+    fromT: 96.8,
+    toT: 103.2,
     eyebrow: EXPERTISE[2].num,
     titleMain: "Промислові",
     titleAccent: "об’єкти",
@@ -367,8 +370,8 @@ export const COPY: CopyBlock[] = [
   {
     id: "exp4",
     kind: "copy",
-    fromT: 96.8,
-    toT: 103.2,
+    fromT: 104.8,
+    toT: 111.2,
     eyebrow: EXPERTISE[3].num,
     titleMain: "Інфраструктурні",
     titleAccent: "системи",
@@ -377,8 +380,8 @@ export const COPY: CopyBlock[] = [
   {
     id: "phase04",
     kind: "phase",
-    fromT: 104.6,
-    toT: 108.6,
+    fromT: 112.6,
+    toT: 116.6,
     light: true,
     label: "// ФАЗА 04 · ЯКІСТЬ · CONTROL PROTOCOL",
   },
@@ -386,8 +389,8 @@ export const COPY: CopyBlock[] = [
   {
     id: "q1",
     kind: "copy",
-    fromT: 110.8,
-    toT: 115.4,
+    fromT: 118.8,
+    toT: 123.4,
     light: true,
     eyebrow: PHASES[0].code,
     titleMain: "Контроль",
@@ -397,8 +400,8 @@ export const COPY: CopyBlock[] = [
   {
     id: "q2",
     kind: "copy",
-    fromT: 116.6,
-    toT: 120.5,
+    fromT: 124.6,
+    toT: 128.5,
     light: true,
     eyebrow: PHASES[1].code,
     titleMain: "Документальний",
@@ -408,8 +411,8 @@ export const COPY: CopyBlock[] = [
   {
     id: "q3",
     kind: "copy",
-    fromT: 121.6,
-    toT: 125.5,
+    fromT: 129.6,
+    toT: 133.5,
     light: true,
     eyebrow: PHASES[2].code,
     titleMain: "Відповідність",
@@ -419,8 +422,8 @@ export const COPY: CopyBlock[] = [
   {
     id: "q4",
     kind: "copy",
-    fromT: 126.6,
-    toT: 130.5,
+    fromT: 134.6,
+    toT: 138.5,
     light: true,
     eyebrow: PHASES[3].code,
     titleMain: "Технічний",
@@ -430,8 +433,8 @@ export const COPY: CopyBlock[] = [
   {
     id: "phase05",
     kind: "phase",
-    fromT: 131.6,
-    toT: 134.8,
+    fromT: 139.6,
+    toT: 142.8,
     label: "// ФАЗА 05 · ВЗАЄМОДІЯ · SYSTEM LINK",
   },
   {
@@ -439,7 +442,7 @@ export const COPY: CopyBlock[] = [
     kind: "copy",
     // toT за пределом фильма: контакты остаются видимыми на финальном кадре,
     // пока sticky-сцена не уедет под секции
-    fromT: 138.5,
+    fromT: 146.5,
     toT: 999,
     eyebrow: CONTACTS.status,
     titleMain: "Взаємодія",
@@ -451,24 +454,10 @@ export const COPY: CopyBlock[] = [
 
 // Тайминги оверлеев и хрома на глобальном таймлайне.
 export const TIMELINE = {
-  // UkraineMap поверх V01 и V20 (oneshot.md, раздел 6, п.7).
-  ukraine: {
-    // Пролог: каскад огней за дрейф, на снижении (конец V01 → первая треть
-    // V02) слой растёт навстречу камере (scale 1 → 2.6) и растворяется
-    // в облаках синхронно с падением.
-    igniteFrom: 0.5,
-    igniteTo: 6.0,
-    diveFrom: 7.0,
-    diveTo: 10.7,
-    // Эпилог (V20): обратное движение — проступает из приближения
-    // и садится на масштаб 1 к финальному кадру.
-    riseFrom: 140.0,
-    riseTo: 146.5,
-  },
   // Шкала PHASE 01..04: лаборатория, V15-V18.
-  phaseBar: { fromT: 110, toT: 131 },
+  phaseBar: { fromT: 118, toT: 139 },
   // Инверсия хрома в светлой части (белая хмара → отъезд к окну).
-  chromeLight: { fromT: 105, toT: 132.5 },
+  chromeLight: { fromT: 113, toT: 140.5 },
 };
 
 // Высота скролл-спейсера: весь таймлайн плюс один вьюпорт покоя на финальном
