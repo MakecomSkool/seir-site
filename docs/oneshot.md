@@ -162,33 +162,36 @@ cooling towers releasing slow steam, low mist. + тёмный хвост + Ук�
 
 **K10. Електростанція.**
 ```
-Aerial view beside a large modern power plant at dawn, cooling towers with
-slow steam, turbine hall roof, switchyard beside it, the wide river behind,
-sunflower fields around, low mist, pale orange horizon. + тёмный хвост +
-Украина + новизна
+Aerial view beside a large modern power plant, cooling towers with slow
+steam, turbine hall roof, switchyard beside it, the wide river behind,
+sunflower fields around, soft pale morning light, thin warm glow at the
+horizon, low mist. + тёмный хвост + Украина + новизна
 ```
 
 **K11. Підстанція.**
 ```
-Aerial view above a new distribution substation at dawn, rectangular fenced
-yard with transformers and busbars, transmission lines leaving in three
+Aerial view above a new distribution substation, rectangular fenced yard
+with transformers and busbars, transmission lines leaving in three
 directions across sunflower fields toward the horizon, a small town beyond,
-low ground mist. + тёмный хвост + Украина + новизна
+soft pale morning light, thin warm glow at the horizon, low mist.
++ тёмный хвост + Украина + новизна
 ```
 
 **K12. Завод.**
 ```
-Aerial view of a large modern manufacturing plant at sunrise, long production
-halls, pipe racks, a substation at the site edge, poplar trees along the
-access road, fields around, warm low sun. + тёмный хвост + Украина + новизна
+Aerial view of a large modern manufacturing plant, long production halls,
+pipe racks, a substation at the site edge, poplar trees along the access
+road, fields around, soft pale morning light, thin warm glow at the horizon,
+low mist. + тёмный хвост + Украина + новизна
 ```
 
 **K13. Інфраструктура, широко.**
 ```
-Very wide aerial view at morning: a pumping station with pipelines, a heating
-plant with insulated pipes running away, a road and a rail line crossing, a
-telecom mast, a small town, the river and sunflower fields stretching to the
-horizon. + тёмный хвост + Украина + новизна
+Very wide aerial view: a pumping station with pipelines, a heating plant
+with insulated pipes running away, a road and a rail line crossing, a
+telecom mast, a small town, the river and sunflower fields stretching to
+the horizon, soft pale morning light, thin warm glow at the horizon, low
+mist. + тёмный хвост + Украина + новизна
 ```
 
 **K14. Біла хмара.** Тихий стык №4, главный: кадр почти чистый белый.
