@@ -74,6 +74,11 @@ export type Act = {
 // Высота фазовой перебивки между актами.
 export const PHASE_CARD_VH = 40;
 
+// Наличие медиафайлов сцены: сервер проверяет public/video и public/poster,
+// сцена без файлов рендерит градиент-заглушку и не делает ни одного запроса.
+export type SceneMediaAvailability = { mp4: boolean; webm: boolean; poster: boolean };
+export type MediaAvailability = Record<string, SceneMediaAvailability>;
+
 // Метаданные сайта. layout.tsx берёт строки отсюда: тексты живут только в этом файле.
 export const SITE_META = {
   title: "SEIR — Стратегічні Енерго-Індустріальні Рішення",

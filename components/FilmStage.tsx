@@ -23,6 +23,7 @@ import {
   type ActId,
   type Axis,
   type Cta,
+  type MediaAvailability,
   type Playback,
   type SectionId,
 } from "@/content/film";
@@ -39,11 +40,10 @@ const BLUR_MIN_OPACITY = 0.15;
 // Скролл дальше этого порога прячет подсказку «прокрутіть».
 const SCROLL_HINT_PX = 60;
 
-// Загрузка видео актами: активируем, когда до сцены меньше двух сегментов
-// (сцена + перебивка), и держим, пока сцена не ушла дальше полутора сегментов.
-// За пределами RELEASE-порога буферы и декодер освобождаются (лимит
-// одновременных медиаплееров на iOS).
-const MEDIA_ON_FROM = -2;
+// Ленивая загрузка: preload переключается на auto при |d| < 1.5 (docs/build.md,
+// шаг 5), окно ограничено с обеих сторон. За пределами RELEASE-порога буферы
+// и декодер освобождаются (лимит одновременных медиаплееров на iOS).
+const MEDIA_ON_FROM = -1.5;
 const MEDIA_ON_TO = 1.5;
 const MEDIA_RELEASE = 3;
 
@@ -110,7 +110,13 @@ function applyAxis(el: HTMLElement, axis: Axis, d: number) {
   el.style.willChange = "transform, opacity, filter";
 }
 
-export default function FilmStage({ film }: { film: ActConfig[] }) {
+export default function FilmStage({
+  film,
+  media,
+}: {
+  film: ActConfig[];
+  media?: MediaAvailability;
+}) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
   const lenisRef = useRef<Lenis | null>(null);
@@ -540,6 +546,7 @@ export default function FilmStage({ film }: { film: ActConfig[] }) {
           <Act
             key={act.id}
             act={act}
+            media={media}
             startVh={0}
             withCard={withCard}
             firstAct={index === 0}
@@ -571,6 +578,7 @@ export default function FilmStage({ film }: { film: ActConfig[] }) {
             <Act
               key={act.id}
               act={act}
+              media={media}
               startVh={startVh}
               withCard={withCard}
               firstAct={index === 0}

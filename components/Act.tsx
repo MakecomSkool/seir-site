@@ -1,9 +1,15 @@
 import PhaseCard from "@/components/PhaseCard";
 import Scene from "@/components/Scene";
-import { PHASE_CARD_VH, type Act as ActConfig, type Cta } from "@/content/film";
+import {
+  PHASE_CARD_VH,
+  type Act as ActConfig,
+  type Cta,
+  type MediaAvailability,
+} from "@/content/film";
 
 type Props = {
   act: ActConfig;
+  media?: MediaAvailability;
   startVh: number; // начало акта в vh от начала фильма, включая его перебивку
   withCard: boolean; // перед первым актом перебивки нет
   firstAct: boolean;
@@ -11,7 +17,15 @@ type Props = {
   onCta?: (cta: Cta) => void;
 };
 
-export default function Act({ act, startVh, withCard, firstAct, layout, onCta }: Props) {
+export default function Act({
+  act,
+  media,
+  startVh,
+  withCard,
+  firstAct,
+  layout,
+  onCta,
+}: Props) {
   // Перебивка перед белым актом «Якість» белая, а не чёрная: это переход
   // в светлую часть (docs/build.md, шаг 3).
   const lightCard = act.palette === "white";
@@ -26,6 +40,7 @@ export default function Act({ act, startVh, withCard, firstAct, layout, onCta }:
           <Scene
             key={scene.id}
             scene={scene}
+            avail={media?.[scene.id]}
             axis={act.axis}
             palette={act.palette}
             playback={act.playback}
@@ -58,6 +73,7 @@ export default function Act({ act, startVh, withCard, firstAct, layout, onCta }:
           <Scene
             key={scene.id}
             scene={scene}
+            avail={media?.[scene.id]}
             axis={act.axis}
             palette={act.palette}
             playback={act.playback}
