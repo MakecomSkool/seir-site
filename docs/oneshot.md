@@ -96,22 +96,52 @@ trees along a road
 
 ## 4. Кадры K00-K20
 
-✅ = уже сгенерирован, job_id действителен, не перегенерировать.
+**K00. Орбіта, ніч.** Контур Украины и огни рисует фронт (UkraineMap.tsx),
+видео даёт лимб, атмосферу, звёзды. Огней мало — страна ещё «не зажжена».
+```
+View of Earth from low orbit at night, curved limb across the lower third,
+thin luminous blue atmospheric glow, faint stars. The dark landmass below
+carries sparse scattered warm city lights, thin clouds catching the glow.
++ тёмный хвост
+```
 
-**K00 ✅ Орбіта, ніч.** job efea0f30. Контур Украины и огни рисует фронт
-(UkraineMap.tsx), видео даёт лимб, атмосферу, звёзды.
+**K01. Високо над Україною, поля і ріка внизу.** Ключевой кадр спуска:
+камера ещё НЕ вошла в облака, пейзаж читается сверху. Тихий стык №1 —
+облачный слой — проходится в движении внутри V02.
+```
+High altitude aerial view at night above Ukrainian countryside: far below
+the dark landscape with sunflower fields and a wide calm river faintly lit
+by the moon, scattered village lights, thin clouds drifting far below the
+camera, the horizon very slightly curved. + тёмный хвост + Украина
+```
 
-**K01 ✅ Усередині хмар, розрив, унизу двір.** job ce98dbb3.
-Тихий стык №1: кадр почти целиком облако.
+**K02. Двір діагностики.** Тепловизор у трансформатора, за ним ТЁПЛАЯ
+ОТКРЫТАЯ ДВЕРЬ мастерской — проём следующего прохода.
+```
+Night service yard beside a workshop: a power transformer under portable
+floodlights, a thermal imaging camera on a tripod facing it, rugged
+diagnostic cases open on the wet asphalt, cables neatly laid; behind the
+equipment the warm open door of the workshop glows in the dark.
++ тёмный хвост + новизна
+```
 
-**K02 ✅ Двір діагностики.** job 000c87db. Тепловизор у трансформатора,
-за ним ТЁПЛАЯ ОТКРЫТАЯ ДВЕРЬ мастерской — проём следующего прохода.
+**K03. Ремонтний бокс.** Разобранный трансформатор, в ВОРОТАХ виден трал
+с новым — проём следующего прохода.
+```
+Inside a repair workshop at night: a large disassembled power transformer
+on stands, core and windings exposed under work lights, tools ordered on
+benches; through the open gate a low-loader trailer with a new wrapped
+transformer waits outside in the rain. + тёмный хвост + модификатор K03
+```
 
-**K03 ✅ Ремонтний бокс.** job 1d49337a. Разобранный трансформатор, в
-ВОРОТАХ виден трал с новым — проём следующего прохода.
-
-**K04 ✅ Двір поставки.** job 5b6ea1d0. Кран, ящики, дождь, передрассветный
-свет. Взгляд в сторону ТЁМНЫХ ВОРОТ склада — проём.
+**K04. Двір поставки.** Кран, ящики, дождь, передрассветный свет. Взгляд
+в сторону ТЁМНЫХ ВОРОТ склада — проём.
+```
+Rainy pre-dawn supply yard: a mobile crane beside a low-loader trailer
+carrying a large wrapped transformer, stacked crates and cable drums
+glistening in the rain, floodlight masts; across the yard the dark open
+gate of a warehouse. + тёмный хвост + новизна
+```
 
 **K05. Поріг ангара.** Тихий стык №2: кадр наполовину тёмный проём.
 ```
@@ -252,14 +282,13 @@ glow. + тёмный хвост
 
 Параметры всех: cinematic_studio_video_v2, 16:9, mode pro, sound off,
 speedramp linear, cfg_scale 0.35. Длительность 8 c, где не указано иное.
-✅ = сгенерирован (этап 1), остаётся.
 
 | V | start→end | Движение |
 |---|---|---|
-| V01 ✅ | K00→K01 | орбитальный дрейф, в конце начало спуска |
-| V02 ✅ | K01→K02 | падение сквозь разрыв облака, приземление у диагностики |
-| V03 ✅ | K02→K03 | сквозь тёплую дверь в ремонтный бокс |
-| V04 ✅ | K03→K04 | сквозь ворота под дождь, вдоль трала |
+| V01 | K00→K01 | `The camera drifts slowly in orbit above the night Earth, then tips forward and begins a long descent, the landscape with fields and the river resolving far below. One continuous move.` |
+| V02 | K01→K02 | `The camera dives from high altitude, passes through a thin cloud layer that briefly fills the frame, and descends toward a lit service yard, landing at eye level beside the transformer. One continuous descent.` |
+| V03 | K02→K03 | `The camera moves toward the warm open door of the workshop and passes through it into the repair bay, arriving at the disassembled transformer. Steady continuous move.` |
+| V04 | K03→K04 | `The camera moves through the open gate out into the rain, tracking along the low-loader trailer into the supply yard. Steady continuous move.` |
 | V05 | K04→K05 | `The camera follows the forklift tracks from the rainy yard through the dark gate into the warehouse, the rain sounds left behind, arriving at the first light cone with the cable reel. Steady slow move into darkness.` |
 | V06 | K05→K06 | `The camera tracks laterally right at constant slow speed past the light cones, the reel and joint kits leaving frame, the transformer arriving at centre, the turbine rotor entering. Perfectly steady dolly, no zoom.` |
 | V07 | K06→K07 | `The camera tracks laterally right at constant slow speed, the transformer and turbine rotor leaving frame, the switchgear cubicles passing, the circuit breaker arriving at centre, the instrument rack entering from the right. Perfectly steady dolly, no zoom, no speed change.` |
@@ -288,8 +317,8 @@ very slightly curved. + тёмный хвост
 ```
 Тихий стык V20a/V20b — в облачной прослойке K19b.
 
-Тихие стыки (реальные склейки сегментов): внутри K01 (облако), K05 (тёмный
-проём), шахта люка внутри V09, K14 (белое). Остальные границы сегментов
+Тихие стыки (реальные склейки сегментов): облачный слой внутри V02, K05
+(тёмный проём), шахта люка внутри V09, K14 (белое). Остальные границы сегментов
 склеиваются общим кадром в движении: это тоже стыки, но камера в них не
 останавливается, поэтому требование к ним — совпадение кадра, оно
 обеспечено цепью start/end.
@@ -357,7 +386,9 @@ very slightly curved. + тёмный хвост
 | Дубли ~40% | ~12 кр | ~96 кр |
 | **Итого** | | **~334 кр** |
 
-Ядро (K00-K04, V01-V04) выживает целиком.
+Ядро (K00-K04, V01-V04) пересдаётся заново: отметки ✅ стояли ошибочно,
+старые ролики этапа 1 делались под архитектуру с перебивками и в цепь
+кадр-в-кадр не встают (шов V01→V02 был разорван, контур запечён в футаж).
 
 ## 8. Порядок
 
