@@ -77,3 +77,20 @@ body {
 .chrome-light .chrome-shadow {
   text-shadow: none;
 }
+
+/* Канвасы и линии тока отключаются на узких экранах (docs/build.md, шаг 6) */
+@media (max-width: 819px) {
+  [data-film-overlay] {
+    display: none;
+  }
+}
+
+/* Смена тега CAT-XX: появление с fade 400 мс */
+.cat-tag-fade {
+  animation: cat-tag-fade 400ms ease;
+}
+@keyframes cat-tag-fade {
+  from {
+    opacity: 0;
+  }
+}

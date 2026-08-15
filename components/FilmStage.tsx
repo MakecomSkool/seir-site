@@ -3,10 +3,17 @@
 import { useEffect, useRef, useState } from "react";
 import Lenis from "lenis";
 import Act from "@/components/Act";
+import CatTag from "@/components/CatTag";
 import Chrome, {
   type ChromeState,
   type NavigateAlign,
 } from "@/components/Chrome";
+import PhaseBar from "@/components/PhaseBar";
+import type {
+  CatTagNode,
+  OverlayNode,
+  PhaseBarNode,
+} from "@/components/overlayBridge";
 import {
   PHASE_CARD_VH,
   stageHeightVh,
@@ -191,6 +198,9 @@ export default function FilmStage({ film }: { film: ActConfig[] }) {
             ? sibling
             : null,
         video: el.querySelector<HTMLVideoElement>("video"),
+        overlays: Array.from(
+          el.querySelectorAll<HTMLElement>("[data-film-overlay]"),
+        ) as OverlayNode[],
         kind: el.dataset.seg as "card" | "scene",
         axis: el.dataset.axis as Axis,
         playback: el.dataset.playback as Playback,
@@ -205,8 +215,34 @@ export default function FilmStage({ film }: { film: ActConfig[] }) {
         playing: false,
         retryAfter: 0,
         pendingTime: null as number | null,
+        lastD: 0,
       };
     });
+    const overlaySegments = segments.filter((seg) => seg.overlays.length > 0);
+    const phaseBarNode = document.querySelector<PhaseBarNode>("[data-phase-bar]");
+    const catTagNode = document.querySelector<CatTagNode>("[data-cat-tag]");
+
+    // Диапазон сегментов шкалы фаз и cats каждого сегмента — из конфига
+    let phaseFrom = -1;
+    let phaseTo = -1;
+    const segCats: (string[] | null)[] = [];
+    {
+      let index = 0;
+      film.forEach((act, actIndex) => {
+        if (actIndex > 0) {
+          segCats.push(null);
+          index += 1;
+        }
+        act.scenes.forEach((scene) => {
+          if (scene.overlay === "phaseBar") {
+            if (phaseFrom < 0) phaseFrom = index;
+            phaseTo = index + 1;
+          }
+          segCats.push(scene.cats?.length ? scene.cats : null);
+          index += 1;
+        });
+      });
+    }
     const backdrop = stage.querySelector<HTMLElement>("[data-film-backdrop]");
 
     // Какой акт владеет каждым сегментом — для активной засечки ActRail.
@@ -241,6 +277,8 @@ export default function FilmStage({ film }: { film: ActConfig[] }) {
     window.addEventListener("resize", onResize);
 
     let lastPosVh = -1;
+    let lastP = 0;
+    let lastSegAt = -1;
     const retryTimers: number[] = [];
     // Видео догрузилось при неподвижном скролле — ранний выход applyScroll
     // оставил бы его на нулевом кадре; сбрасываем кэш позиции.
@@ -279,6 +317,14 @@ export default function FilmStage({ film }: { film: ActConfig[] }) {
           break;
         }
       }
+      lastP = p;
+
+      // CAT-тег: cats активного сегмента, пуш только при смене сегмента
+      const segAt = Math.min(Math.floor(p), segCats.length - 1);
+      if (segAt !== lastSegAt) {
+        lastSegAt = segAt;
+        catTagNode?.filmCatsUpdate?.(segCats[segAt] ?? null);
+      }
 
       for (let i = 0; i < segments.length; i++) {
         const seg = segments[i];
@@ -293,6 +339,7 @@ export default function FilmStage({ film }: { film: ActConfig[] }) {
           // Окно удержания оси: внутри [holdFrom, holdTo] сцена стоит в покое,
           // осевые формулы применяются к выходу за окно (проезд акта II).
           const dAxis = d < seg.holdFrom ? d - seg.holdFrom : d > seg.holdTo ? d - seg.holdTo : 0;
+          seg.lastD = d;
           applyAxis(seg.el, seg.axis, dAxis);
           if (seg.copy) applyCopy(seg.copy, dAxis);
 
@@ -378,7 +425,6 @@ export default function FilmStage({ film }: { film: ActConfig[] }) {
 
       // Состояние хрома: активный акт, инверсия в белом акте, подсказка скролла.
       // Пушится в Chrome через setter — сцены не перерисовываются.
-      const segAt = Math.min(Math.floor(p), actOfSegment.length - 1);
       const next: ChromeState = {
         act: actOfSegment[segAt] ?? 0,
         light: wFrom >= 0 && p >= wFrom - 0.15 && p < wTo - 0.2,
@@ -395,15 +441,57 @@ export default function FilmStage({ film }: { film: ActConfig[] }) {
       }
     };
 
+    // Сглаженная скорость скролла, px/s — для реакции линий тока
+    let smoothVelocity = 0;
+    let lastTime = -1;
+    let lastScrollPx = window.scrollY;
+
+    const updateOverlays = () => {
+      for (const seg of overlaySegments) {
+        // Сцена далеко от вьюпорта и скрыта — не трогаем её оверлеи
+        if (Math.abs(seg.lastD) >= 1.1) continue;
+        const progress = clamp01(
+          (seg.lastD - seg.scrubFrom) / (seg.scrubTo - seg.scrubFrom),
+        );
+        for (const node of seg.overlays) {
+          node.filmOverlayUpdate?.({
+            d: seg.lastD,
+            progress,
+            p: lastP,
+            velocity: smoothVelocity,
+          });
+        }
+      }
+      if (phaseBarNode?.filmPhaseUpdate && phaseFrom >= 0) {
+        const opacity = clamp01(
+          Math.min(lastP - (phaseFrom - 0.45), phaseTo + 0.45 - lastP) / 0.3,
+        );
+        const fill = clamp01((lastP - phaseFrom) / (phaseTo - phaseFrom));
+        phaseBarNode.filmPhaseUpdate({ opacity, fill });
+      }
+    };
+
     const lenis = new Lenis();
     lenisRef.current = lenis;
     let frame = 0;
     const update = (time: number) => {
       lenis.raf(time);
+      if (lastTime >= 0) {
+        const dt = Math.max(0.001, (time - lastTime) / 1000);
+        const instant = (window.scrollY - lastScrollPx) / dt;
+        smoothVelocity += (instant - smoothVelocity) * Math.min(1, dt * 8);
+        if (Math.abs(smoothVelocity) < 1) smoothVelocity = 0;
+      }
+      lastTime = time;
+      lastScrollPx = window.scrollY;
       applyScroll();
+      // Оверлеи обновляются каждый кадр, вне раннего выхода applyScroll:
+      // свечение линий должно затухать и при неподвижном скролле
+      updateOverlays();
       frame = requestAnimationFrame(update);
     };
     applyScroll();
+    updateOverlays();
     frame = requestAnimationFrame(update);
 
     return () => {
@@ -477,6 +565,14 @@ export default function FilmStage({ film }: { film: ActConfig[] }) {
         mode="film"
         onNavigate={navigate}
         register={registerChrome}
+      />
+      {/* Клик по CAT-тегу поведёт к карточке каталога (секция — шаг 7),
+          пока — к проезду по оборудованию */}
+      <CatTag onSelect={() => navigate("equipment")} />
+      <PhaseBar
+        labels={film.flatMap((act) =>
+          act.scenes.filter((scene) => scene.overlay === "phaseBar").map((scene) => scene.eyebrow),
+        )}
       />
     </>
   );

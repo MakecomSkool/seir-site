@@ -1,3 +1,5 @@
+import CityLights from "@/components/CityLights";
+import FlowLayer from "@/components/FlowLayer";
 import SceneCopy from "@/components/SceneCopy";
 import {
   PALETTES,
@@ -95,6 +97,11 @@ export default function Scene({
           />
           <source src={scene.videoSrc} type="video/mp4" />
         </video>
+        {/* Оверлеи рисует фронт поверх видео — принципиально не в видео */}
+        {scene.overlay === "cityLights" && (
+          <CityLights lit={scene.lightsMode === "lit"} />
+        )}
+        {scene.overlay === "flow" && <FlowLayer paths={scene.flowPaths} />}
       </div>
       <SceneCopy
         scene={scene}

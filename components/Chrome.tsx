@@ -98,7 +98,7 @@ export default function Chrome({ film, mode, onNavigate, register }: Props) {
       {mode === "film" && (
         <p
           data-scroll-hint=""
-          className="chrome-shadow fixed bottom-5 right-6 z-40 font-mono text-[10px] uppercase tracking-[0.3em] text-[var(--chrome-dim)]"
+          className="chrome-shadow pointer-events-none fixed bottom-5 right-6 z-40 font-mono text-[10px] uppercase tracking-[0.3em] text-[var(--chrome-dim)]"
         >
           {CHROME.scrollHint}
         </p>
