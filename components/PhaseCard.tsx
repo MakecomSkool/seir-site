@@ -10,7 +10,10 @@ type Props = {
 export default function PhaseCard({ label, light, startVh = 0, layout }: Props) {
   const background = light ? "var(--paper)" : "#000";
   const line = (
+    // suppressHydrationWarning: пре-гидрационный скрипт выставляет opacity
+    // подписи (label lag) до гидрации React
     <p
+      suppressHydrationWarning
       className={`font-mono text-[11px] uppercase tracking-[0.3em] ${
         light ? "text-[var(--dim-dark)]" : "text-[var(--dim)]"
       }`}

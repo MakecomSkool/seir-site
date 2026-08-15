@@ -1,3 +1,4 @@
+import CatCards from "@/components/CatCards";
 import CityLights from "@/components/CityLights";
 import FlowLayer from "@/components/FlowLayer";
 import SceneCopy from "@/components/SceneCopy";
@@ -127,6 +128,7 @@ export default function Scene({
         {scene.overlay === "ukraineMap" && (
           <UkraineMap lit={scene.lightsMode === "lit"} />
         )}
+        {scene.overlay === "catCards" && <CatCards />}
       </div>
       <SceneCopy
         scene={scene}

@@ -33,6 +33,7 @@ export type Overlay =
   | "leds"
   | "phaseBar"
   | "ukraineMap"
+  | "catCards"
   | null;
 
 export type Cta = { label: string; action: "lead" | "catalog" };
@@ -310,6 +311,9 @@ export const FILM: Act[] = [
         eyebrow: "",
         titleMain: "",
         titleAccent: "",
+        // Карточка объекта выезжает, когда он в центре кадра: девять слотов
+        // прогресса проезда, счётчик 01..09 / 09
+        overlay: "catCards",
         cats: CATALOG.map((item) => item.code),
       },
     ],
@@ -451,9 +455,8 @@ export const FILM: Act[] = [
         titleMain: "Взаємодія",
         titleAccent: CONTACTS.statusLine,
         body: [CONTACTS.address, CONTACTS.phone, CONTACTS.email],
-        // Кольцо фильма: тот же контур, но огни горят сразу и ярче
-        overlay: "ukraineMap",
-        lightsMode: "lit",
+        // Кольцо фильма: контур и огни впечатаны в футаж (финальный кадр
+        // взлёта = контурный кадр пролога), рисованный оверлей не нужен.
         cta: { label: "Запит консультації", action: "lead" },
       },
     ],
