@@ -3,11 +3,7 @@
 // узлы при монтаже и зовёт их каждый кадр. Никаких ре-рендеров React.
 
 export type OverlayFrame = {
-  d: number; // сырая дельта сцены-хозяина (без axisHold — оверлей живёт в кадре)
-  // Локальный прогресс сцены 0..1 по её scrubWindow — тот же, что у видео:
-  // оверлей и кадр всегда синхронны.
-  progress: number;
-  p: number; // глобальный прогресс фильма в сегментах
+  t: number; // глобальное время таймлайна, секунды
   velocity: number; // сглаженная скорость скролла, px/s
 };
 
@@ -15,7 +11,7 @@ export type OverlayNode = Element & {
   filmOverlayUpdate?: (frame: OverlayFrame) => void;
 };
 
-// Отдельные сигнатуры для оверлеев уровня фильма (не привязанных к сцене)
+// Отдельные сигнатуры для оверлеев уровня фильма
 export type PhaseBarNode = Element & {
   filmPhaseUpdate?: (state: { opacity: number; fill: number }) => void;
 };

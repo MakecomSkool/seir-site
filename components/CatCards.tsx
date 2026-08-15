@@ -1,13 +1,32 @@
 import { useEffect, useRef } from "react";
 import type { OverlayFrame, OverlayNode } from "@/components/overlayBridge";
 import { CATALOG } from "@/content/catalog";
+import { segmentSpans, SEGMENTS } from "@/content/film";
 
-// Карточки номенклатуры для проезда акта II: девять объектов футажа — девять
-// карточек. Прогресс проезда (scrubWindow lp) делится на девять слотов; когда
-// объект в центре кадра, его карточка выезжает слева и уходит до следующего.
+// Карточки номенклатуры для проезда по ангару (V06-V08): каждый сегмент несёт
+// свою часть каталога (поле cats в конфиге), окно сегмента на таймлайне
+// делится на слоты по числу его карточек. Когда объект в центре кадра, его
+// карточка выезжает слева и уходит до следующего. Счётчик сквозной 01..09.
 // Всё через прямые записи стилей из rAF-моста, без React-состояния.
 
-const SLOTS = CATALOG.length;
+type Window = { fromT: number; toT: number; codes: string[]; offset: number };
+
+function buildWindows(): Window[] {
+  const windows: Window[] = [];
+  let offset = 0;
+  for (const span of segmentSpans(SEGMENTS)) {
+    if (!span.cats?.length) continue;
+    windows.push({
+      fromT: span.tStart,
+      toT: span.tStart + span.duration,
+      codes: span.cats,
+      offset,
+    });
+    offset += span.cats.length;
+  }
+  return windows;
+}
+
 // Окно видимости внутри слота: вход после того, как объект вошёл в кадр,
 // уход до того, как его сменил следующий
 const CARD_FROM = 0.1;
@@ -23,6 +42,8 @@ export default function CatCards() {
   useEffect(() => {
     const root = rootRef.current;
     if (!root) return;
+    const windows = buildWindows();
+    const total = windows.reduce((sum, w) => sum + w.codes.length, 0);
     const cards = Array.from(
       root.querySelectorAll<HTMLElement>("[data-cat-card]"),
     );
@@ -30,12 +51,30 @@ export default function CatCards() {
     let lastIdx = -1;
     let lastOpacity = -1;
 
+    const hide = () => {
+      if (lastIdx >= 0) {
+        const prev = cards[lastIdx];
+        prev.style.opacity = "0";
+        prev.style.visibility = "hidden";
+        lastIdx = -1;
+      }
+      if (lastOpacity !== 0 && counter) counter.style.opacity = "0";
+      lastOpacity = 0;
+    };
+
     const node = root as HTMLDivElement & OverlayNode;
     node.filmOverlayUpdate = (frame: OverlayFrame) => {
-      const t = clamp01(frame.progress);
-      // На t=1 остаёмся в последнем слоте, а не в несуществующем десятом
-      const idx = Math.min(SLOTS - 1, Math.floor(t * SLOTS));
-      const local = t * SLOTS - idx;
+      const t = frame.t;
+      const win = windows.find((w) => t >= w.fromT && t < w.toT);
+      if (!win) {
+        hide();
+        return;
+      }
+      const slots = win.codes.length;
+      const local01 = (t - win.fromT) / (win.toT - win.fromT);
+      const slot = Math.min(slots - 1, Math.floor(local01 * slots));
+      const local = local01 * slots - slot;
+      const idx = win.offset + slot;
       const opacity = clamp01(
         Math.min((local - CARD_FROM) / CARD_RAMP, (CARD_TO - local) / CARD_RAMP),
       );
@@ -48,7 +87,7 @@ export default function CatCards() {
         lastIdx = idx;
         lastOpacity = -1;
         if (counter) {
-          counter.textContent = `${String(idx + 1).padStart(2, "0")} / ${String(SLOTS).padStart(2, "0")}`;
+          counter.textContent = `${String(idx + 1).padStart(2, "0")} / ${String(total).padStart(2, "0")}`;
         }
       }
       if (opacity === lastOpacity) return;
@@ -100,7 +139,7 @@ export default function CatCards() {
         className="mt-4 font-mono text-[11px] tracking-[0.3em] text-[var(--dim)]"
         style={{ opacity: 0 }}
       >
-        01 / {String(SLOTS).padStart(2, "0")}
+        01 / {String(CATALOG.length).padStart(2, "0")}
       </p>
     </div>
   );

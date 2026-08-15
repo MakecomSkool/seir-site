@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import type { OverlayFrame, OverlayNode } from "@/components/overlayBridge";
+import { TIMELINE } from "@/content/film";
 import {
   CITIES,
   insideUkraine,
@@ -11,26 +12,20 @@ import {
 
 // Точный контур Украины (Крым в составе) поверх видео орбиты: генеративный
 // кадр остаётся атмосферным фоном, география рисуется фронтом. Контур — SVG,
-// огни городов — канвас в той же наклонённой плоскости. В прологе проявляется
-// с прогрессом сцены (Київ загорается первым, дальше по убыванию размера);
-// в эпилоге контур виден с первого кадра, огней сразу много и они ярче.
+// огни городов — канвас в той же наклонённой плоскости. Один экземпляр на
+// фильм, привязан к глобальному таймлайну (TIMELINE.ukraine):
+// — пролог (V01): каскад огней за дрейф (Київ первым), на снижении слой
+//   растёт навстречу камере (scale 1 → 2.6) и растворяется в облаках
+//   синхронно с падением — а не исчезает fade-ом на месте;
+// — эпилог (V20): обратное движение — проступает из приближения, огни уже
+//   горят все и ярче, и садится на масштаб 1 к финальному кадру.
 
 const RANDOM_POINTS = 120;
-// Загорание: каскад завершается ДО начала спуска (последняя треть ролика) —
-// страна успевает зажечься, пока камера ещё на орбите.
-const IGNITE_START = 0.02;
-const IGNITE_SPREAD = 0.35;
-const IGNITE_RAMP = 4.5;
-
-// Спуск: карта растёт навстречу камере, уходит вниз и растворяется в облаках —
-// пролёт читается как видео, а не как наклейка поверх.
-const DIVE_FROM = 0.55;
-const DIVE_SPAN = 0.35;
-const FADE_FROM = 0.62;
-const FADE_SPAN = 0.2;
+const EPILOGUE_BRIGHT = 1.25;
 
 const clamp01 = (value: number) => Math.min(1, Math.max(0, value));
 const easeIn = (t: number) => t * t;
+const easeOut = (t: number) => 1 - (1 - t) * (1 - t);
 
 function mulberry32(seed: number) {
   return () => {
@@ -87,11 +82,10 @@ function buildDots(mobile: boolean): Dot[] {
 }
 
 type Props = {
-  lit?: boolean; // эпилог: огни уже горят и ярче
   staticLit?: boolean; // prefers-reduced-motion: статично, всё горит
 };
 
-export default function UkraineMap({ lit = false, staticLit = false }: Props) {
+export default function UkraineMap({ staticLit = false }: Props) {
   const rootRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -107,24 +101,20 @@ export default function UkraineMap({ lit = false, staticLit = false }: Props) {
     let width = 0;
     let height = 0;
     let lastDrawn = -1;
-    const bright = lit || staticLit ? 1.25 : 1;
 
-    const draw = (progress: number) => {
-      if (progress === lastDrawn || width === 0) return;
-      lastDrawn = progress;
+    // progress огней: 0..1 каскад; bright — множитель эпилога
+    const draw = (progress: number, bright = 1) => {
+      const key = progress + bright * 10;
+      if (key === lastDrawn || width === 0) return;
+      lastDrawn = key;
       ctx.clearRect(0, 0, width, height);
       const scale = width / VIEW_W;
       for (const dot of dots) {
-        const on =
-          lit || staticLit
-            ? 1
-            : clamp01(
-                (progress - IGNITE_START - dot.delay * IGNITE_SPREAD) * IGNITE_RAMP,
-              );
+        const on = clamp01((progress - dot.delay * 0.7) * 4.5);
         if (on <= 0.01) continue;
         const x = dot.x * scale;
         const y = dot.y * scale;
-        const r = dot.r * scale * (lit ? 1.15 : 1);
+        const r = dot.r * scale * (bright > 1 ? 1.15 : 1);
         const alpha = Math.min(1, dot.alpha * on * bright);
         if (dot.glow && r > 1.5) {
           const radius = r * 5;
@@ -157,9 +147,8 @@ export default function UkraineMap({ lit = false, staticLit = false }: Props) {
         mobile = nextMobile;
         dots = buildDots(mobile);
       }
-      const progress = lastDrawn < 0 ? (lit || staticLit ? 1 : 0) : lastDrawn;
       lastDrawn = -1;
-      draw(progress);
+      draw(staticLit ? 1 : 0);
     };
     resize();
     const observer = new ResizeObserver(resize);
@@ -170,39 +159,45 @@ export default function UkraineMap({ lit = false, staticLit = false }: Props) {
       return () => observer.disconnect();
     }
 
+    const cfg = TIMELINE.ukraine;
     const node = root as HTMLDivElement & OverlayNode;
     node.filmOverlayUpdate = (frame: OverlayFrame) => {
-      const progress = frame.progress;
-      let opacity: number;
-      let scale: number;
-      let shift: number;
-      if (lit) {
-        // Эпилог: камера взлетает из окна в орбиту — карта проявляется
-        // и «садится» на материк к финальному кадру
-        const t = clamp01((progress - 0.5) / 0.3);
-        const eased = 1 - (1 - t) * (1 - t);
-        opacity = t;
-        scale = 2.6 - 1.6 * eased;
-        shift = (1 - eased) * 60;
-        draw(1);
-      } else {
-        // Пролог: дрейф — карта лежит на материке; спуск — растёт навстречу,
-        // уходит вниз и тает в облаках до появления подстанции
-        const dive = easeIn(clamp01((progress - DIVE_FROM) / DIVE_SPAN));
-        opacity = 1 - clamp01((progress - FADE_FROM) / FADE_SPAN);
-        scale = 1 + dive * 1.9;
+      const t = frame.t;
+      let opacity = 0;
+      let scaleValue = 1;
+      let shift = 0;
+      if (t <= cfg.diveTo) {
+        // Пролог: дрейф — карта лежит на материке, огни каскадом; спуск —
+        // растёт навстречу, уходит вниз и тает в облаках до конца падения
+        const ignite = clamp01((t - cfg.igniteFrom) / (cfg.igniteTo - cfg.igniteFrom));
+        const dive = easeIn(clamp01((t - cfg.diveFrom) / (cfg.diveTo - cfg.diveFrom)));
+        // Растворение начинается чуть позже роста: слой успевает «полететь
+        // навстречу», прежде чем облака его съедят
+        const dissolve = easeIn(
+          clamp01((t - cfg.diveFrom - 0.9) / (cfg.diveTo - cfg.diveFrom - 0.9)),
+        );
+        opacity = 1 - dissolve;
+        scaleValue = 1 + dive * 1.6;
         shift = dive * 70;
-        draw(Math.round(progress * 500) / 500);
+        draw(Math.round(ignite * 500) / 500);
+      } else if (t >= cfg.riseFrom) {
+        // Эпилог: проступает из приближения и садится на масштаб 1
+        const rise = easeOut(clamp01((t - cfg.riseFrom) / (cfg.riseTo - cfg.riseFrom)));
+        opacity = clamp01(rise * 1.4);
+        scaleValue = 2.6 - 1.6 * rise;
+        shift = (1 - rise) * 60;
+        draw(1, EPILOGUE_BRIGHT);
       }
       root.style.opacity = opacity.toFixed(3);
-      root.style.transform = `translateY(${shift.toFixed(1)}%) perspective(1100px) rotateX(52deg) scale(${scale.toFixed(3)})`;
+      root.style.visibility = opacity <= 0 ? "hidden" : "visible";
+      root.style.transform = `translateY(${shift.toFixed(1)}%) perspective(1100px) rotateX(52deg) scale(${scaleValue.toFixed(3)})`;
     };
 
     return () => {
       observer.disconnect();
       delete node.filmOverlayUpdate;
     };
-  }, [lit, staticLit]);
+  }, [staticLit]);
 
   return (
     // Плоскость карты: нижняя треть кадра, наклон «на планету».
@@ -214,13 +209,13 @@ export default function UkraineMap({ lit = false, staticLit = false }: Props) {
       aria-hidden
       // Сильный наклон кладёт плоскость на материк в нижней половине кадра;
       // изгиб лимба в видео добивает иллюзию «на планете»
-      className="overlay-keep-mobile pointer-events-none absolute inset-x-0 bottom-[3%] mx-auto w-[min(52vw,820px)] max-[819px]:w-[88vw]"
+      className="overlay-keep-mobile pointer-events-none absolute inset-x-0 bottom-[3%] z-[5] mx-auto w-[min(52vw,820px)] max-[819px]:w-[88vw]"
       style={{
         aspectRatio: `${VIEW_W} / ${VIEW_H}`,
         transform: "perspective(1100px) rotateX(52deg)",
         transformOrigin: "50% 100%",
-        // в эпилоге карта проявляется по мере взлёта, в прологе видна сразу
-        opacity: lit && !staticLit ? 0 : 1,
+        opacity: staticLit ? 1 : undefined,
+        visibility: staticLit ? "visible" : undefined,
       }}
     >
       <svg

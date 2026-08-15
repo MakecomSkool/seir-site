@@ -1,8 +1,11 @@
-// SEIR — единый конфиг фильма. Сценарий: docs/film.md.
+// SEIR — единый конфиг фильма. Сценарий: docs/oneshot.md.
+// Один глобальный таймлайн: 20 видеосегментов V01-V20, скролл скраббит время.
+// Темп задаёт столбец vh/с таблицы раздела 6 oneshot.md: duration и scrollVh
+// каждого сегмента, высота страницы считается из них автоматически.
 // Все тексты, тайминги, цвета и пути к видео правятся только здесь.
 // Украинские названия номенклатуры, работ, фаз и экспертизы импортируются
 // из content/catalog.ts — единственного источника строк с сайта компании.
-// Из английских промптов film.md украинский текст не выводится никогда.
+// Из английских промптов oneshot.md украинский текст не выводится никогда.
 
 import {
   CATALOG,
@@ -16,7 +19,54 @@ import {
   SUPPLY_ITEMS,
 } from "@/content/catalog";
 
-export type ActId =
+export type Palette = "cold" | "steel" | "black" | "dawn" | "white";
+
+export type Cta = { label: string; action: "lead" | "catalog" };
+
+// Видеосегмент таймлайна. Движение живёт в самом видео: никаких transform,
+// blur и наплывов на фронте — на границе сегментов жёсткая подмена элемента,
+// оба видео в граничный момент показывают один и тот же кадр (цепь start/end).
+export type Segment = {
+  id: string; // "v01".."v20"
+  videoSrc: string;
+  // Мобильная ветка (oneshot.md, раздел 9): собственные 9:16 версии через
+  // reframe, НЕ кроп. Механика мобилки пока не собрана — поле заложено.
+  mobileSrc: string;
+  posterSrc: string;
+  duration: number; // секунды видео
+  scrollVh: number; // сколько скролла занимает сегмент (темп: vh = с × vh/с)
+  palette: Palette; // градиент-подложка, пока файла нет
+  cats?: string[]; // карточки CAT, проходящие на этом сегменте (V06-V08)
+};
+
+// iOS-страховка (oneshot.md, раздел 9): переключает мобильную версию со
+// скраббинга на автоплей сегмента при входе в вьюпорт, если currentTime-
+// скраббинг дёргается на реальном устройстве. Пока не используется.
+export const IOS_AUTOPLAY_FALLBACK = false;
+
+// Текстовый блок таймлайна: появляется на [fromT, toT] секундах глобального
+// времени, только opacity + translateY. kind "phase" — титр фазы поверх
+// движения («// ФАЗА 02 · …»), появляется на тихом заполнении проёма.
+export type CopyKind = "copy" | "phase";
+export type CopyBlock = {
+  id: string;
+  kind: CopyKind;
+  fromT: number;
+  toT: number;
+  light?: boolean; // светлая часть: тёмный текст
+  first?: boolean; // первый блок фильма: h1, видим до гидрации
+  label?: string; // kind "phase": моно-строка титра
+  eyebrow?: string;
+  titleMain?: string;
+  titleAccent?: string;
+  body?: string[];
+  services?: string[];
+  counter?: { from: string; to: string; caption: string };
+  cta?: Cta;
+};
+
+// Разделы фильма на таймлайне — шкала справа, навигация хрома.
+export type FilmSectionId =
   | "prologue"
   | "solutions"
   | "equipment"
@@ -24,65 +74,10 @@ export type ActId =
   | "quality"
   | "epilogue";
 
-export type Axis = "fall" | "lateral" | "rise" | "still";
-export type Playback = "scrub" | "autoplay";
-export type Palette = "cold" | "steel" | "black" | "dawn" | "white";
-export type Overlay =
-  | "cityLights"
-  | "flow"
-  | "leds"
-  | "phaseBar"
-  | "ukraineMap"
-  | "catCards"
-  | null;
+export type FilmSection = { id: FilmSectionId; title: string; fromT: number };
 
-export type Cta = { label: string; action: "lead" | "catalog" };
-
-export type Scene = {
-  id: string;
-  videoSrc: string;
-  posterSrc: string;
-  duration: number; // секунды ролика
-  scrollVh: number; // сколько скролла занимает сцена
-  eyebrow: string;
-  titleMain: string;
-  titleAccent: string;
-  body?: string[]; // списки работ
-  services?: string[];
-  cats?: string[]; // ['CAT-03', 'CAT-07']
-  counter?: { from: string; to: string; caption: string }; // счётчик вида «0,00 с → 0,12 с»
-  // Окно скраббинга в единицах дельты d: видео проигрывается от w0 до w1.
-  // По умолчанию [-0.5, 0.5] — пик сцены приходится на середину ролика.
-  scrubWindow?: [number, number];
-  // Окно удержания оси: пока d внутри окна, сцена стоит в покое (transform и
-  // opacity в нуле), осевые формулы применяются к выходу за окно. По умолчанию
-  // [0, 0] — обычное поведение. Нужен длинным сценам вроде проезда акта II.
-  axisHold?: [number, number];
-  // Огни городов: ignite — загораются по скроллу (пролог),
-  // lit — уже горят и не гаснут (эпилог).
-  lightsMode?: "ignite" | "lit";
-  // Траектории проводов для FlowLayer, координаты 1600x900 по кадру.
-  // Подогнать по финальным кадрам после генерации видео.
-  flowPaths?: string[];
-  overlay?: Overlay;
-  cta?: Cta;
-};
-
-export type Act = {
-  id: ActId;
-  title: string; // человекочитаемое название акта: шкала актов, aria
-  label: string; // строка фазовой перебивки ПЕРЕД актом: «// ФАЗА 02 · ОБЛАДНАННЯ · CAT REGISTRY»
-  axis: Axis;
-  playback: Playback;
-  palette: Palette;
-  scenes: Scene[];
-};
-
-// Высота фазовой перебивки между актами.
-export const PHASE_CARD_VH = 40;
-
-// Наличие медиафайлов сцены: сервер проверяет public/video и public/poster,
-// сцена без файлов рендерит градиент-заглушку и не делает ни одного запроса.
+// Наличие медиафайлов сегмента: сервер проверяет public/video и public/poster,
+// сегмент без файлов рендерит градиент-заглушку и не делает ни одного запроса.
 export type SceneMediaAvailability = { mp4: boolean; webm: boolean; poster: boolean };
 export type MediaAvailability = Record<string, SceneMediaAvailability>;
 
@@ -96,7 +91,7 @@ export const SITE_META = {
 // Секции после фильма (docs/build.md, шаг 7)
 export type SectionId = "about" | "catalog" | "contact";
 
-export type NavItem = { label: string; target: ActId | SectionId };
+export type NavItem = { label: string; target: FilmSectionId | SectionId };
 
 // Хром: навигация, статусные строки. Тексты живут только здесь.
 export const CHROME = {
@@ -116,7 +111,7 @@ export const CHROME = {
   scrollHint: "прокрутіть",
 };
 
-// Контакты — единый источник для сцены эпилога и секции «Взаємодія»
+// Контакты — единый источник для финала фильма и секции «Взаємодія»
 export const CONTACTS = {
   address: "Київ, Прорізна 13",
   phone: "+380 67 209 99 64",
@@ -184,7 +179,7 @@ export const LEAD = {
   close: "Закрити",
 };
 
-// Градиенты-заглушки по палитрам актов. Останутся фоновой подложкой под видео.
+// Градиенты-заглушки по палитрам. Остаются фоновой подложкой под видео.
 export const PALETTES: Record<Palette, string> = {
   cold: "radial-gradient(120% 90% at 50% 115%, #123055 0%, #081527 45%, #02030A 100%)",
   steel: "linear-gradient(180deg, #0B1119 0%, #232B34 58%, #3A2A12 100%)",
@@ -193,292 +188,289 @@ export const PALETTES: Record<Palette, string> = {
   white: "linear-gradient(180deg, #FFFFFF 0%, #F2F4F7 60%, #DDE3EA 100%)",
 };
 
-export const FILM: Act[] = [
+// Хелпер: имена файлов по конвенции encode.bat (raw/scrub_*.mp4 → all-intra).
+const seg = (
+  id: string,
+  duration: number,
+  scrollVh: number,
+  palette: Palette,
+  cats?: string[],
+): Segment => ({
+  id,
+  videoSrc: `/video/scrub_${id}.mp4`,
+  mobileSrc: `/video/mobile/m_scrub_${id}.mp4`,
+  posterSrc: `/poster/scrub_${id}.webp`,
+  duration,
+  scrollVh,
+  palette,
+  ...(cats ? { cats } : {}),
+});
+
+// Таблица темпа из oneshot.md, раздел 6: длительность с × vh/с = vh.
+// Спидрамп всего фильма живёт в скролле, видео всегда linear.
+export const SEGMENTS: Segment[] = [
+  seg("v01", 8, 80, "cold"), //  0-8    орбита, дрейф          10 vh/с
+  seg("v02", 8, 80, "cold"), //  8-16   падение сквозь облако  10
+  seg("v03", 8, 112, "steel"), // 16-24  двор → бокс           14
+  seg("v04", 8, 112, "steel"), // 24-32  бокс → дождь          14
+  seg("v05", 8, 96, "black"), // 32-40  двор → порог ангара    12
+  seg("v06", 8, 120, "black", CATALOG.slice(0, 4).map((c) => c.code)), // 40-48
+  seg("v07", 8, 120, "black", CATALOG.slice(4, 7).map((c) => c.code)), // 48-56
+  seg("v08", 8, 120, "black", CATALOG.slice(7, 9).map((c) => c.code)), // 56-64
+  seg("v09", 8, 80, "dawn"), // 64-72  подъём сквозь люк       10
+  seg("v10", 8, 96, "dawn"), // 72-80  электростанция          12
+  seg("v11", 8, 96, "dawn"), // 80-88  подстанция              12
+  seg("v12", 8, 96, "dawn"), // 88-96  завод                   12
+  seg("v13", 8, 96, "dawn"), // 96-104 инфраструктура          12
+  seg("v14", 6, 48, "white"), // 104-110 белая хмара            8
+  seg("v15", 6, 48, "white"), // 110-116 вход в лабораторию     8
+  seg("v16", 5, 70, "white"), // 116-121 стол документации     14
+  seg("v17", 5, 70, "white"), // 121-126 испытательная зона    14
+  seg("v18", 5, 70, "white"), // 126-131 макро муфты           14
+  seg("v19", 6, 60, "white"), // 131-137 отъезд к окну         10
+  seg("v20", 10, 80, "cold"), // 137-147 финальный подъём       8
+];
+
+// Производные таймлайна. Меняются только через SEGMENTS.
+export const totalScrollVh = (segments: Segment[] = SEGMENTS): number =>
+  segments.reduce((sum, s) => sum + s.scrollVh, 0);
+
+export const totalDuration = (segments: Segment[] = SEGMENTS): number =>
+  segments.reduce((sum, s) => sum + s.duration, 0);
+
+// Старты сегментов: время (с) и скролл (vh) от начала фильма.
+export type SegmentSpan = Segment & { tStart: number; vhStart: number };
+export const segmentSpans = (segments: Segment[] = SEGMENTS): SegmentSpan[] => {
+  let t = 0;
+  let vh = 0;
+  return segments.map((s) => {
+    const span = { ...s, tStart: t, vhStart: vh };
+    t += s.duration;
+    vh += s.scrollVh;
+    return span;
+  });
+};
+
+// Разделы фильма на таймлайне (oneshot.md, раздел 2).
+export const FILM_SECTIONS: FilmSection[] = [
+  { id: "prologue", title: "Орбіта", fromT: 0 },
+  { id: "solutions", title: "Наші рішення", fromT: 16 },
+  { id: "equipment", title: "Обладнання", fromT: 32 },
+  { id: "expertise", title: "Експертиза", fromT: 64 },
+  { id: "quality", title: "Якість", fromT: 104 },
+  { id: "epilogue", title: "Взаємодія", fromT: 131 },
+];
+
+// Титры фаз идут поверх движения, в моменты тихого заполнения проёма
+// (облако, тёмные ворота, шахта люка, белая хмара, поворот к окну).
+// Тексты разделов — на медленных сегментах таблицы темпа.
+export const COPY: CopyBlock[] = [
   {
-    id: "prologue",
-    title: "Орбіта",
-    label: "", // перед прологом перебивки нет
-    axis: "fall",
-    playback: "scrub",
-    palette: "cold",
-    scenes: [
-      {
-        id: "p0",
-        videoSrc: "/video/scrub_p0.mp4",
-        posterSrc: "/poster/scrub_p0.webp",
-        duration: 8,
-        scrollVh: 100,
-        // Фильм открывается первым кадром; сцена непрозрачна весь пролёт
-        // (axisHold) — зум к карте и спуск в конце ролика играют на виду,
-        // а не на тающем слое. Ролик доигрывает под растущей перебивкой.
-        scrubWindow: [0, 0.9],
-        axisHold: [0, 1],
-        eyebrow: "Стратегічні Енерго-Індустріальні Рішення",
-        titleMain: "За кожним вогнем",
-        titleAccent: "стоїть обладнання",
-        // География в самом видео: зум с орбиты к Украине (кадр F_UA, джоб
-        // 65ff1a34). Нарисованный контур остаётся только в эпилоге — до этапа 5.
-        cta: { label: "Подивитись, як ми працюємо", action: "catalog" },
-      },
-    ],
+    id: "hero",
+    kind: "copy",
+    fromT: 0.8,
+    toT: 7.0,
+    first: true,
+    eyebrow: "Стратегічні Енерго-Індустріальні Рішення",
+    titleMain: "За кожним вогнем",
+    titleAccent: "стоїть обладнання",
+    cta: { label: "Подивитись, як ми працюємо", action: "catalog" },
   },
   {
-    id: "solutions",
-    title: "Наші рішення",
+    id: "phase01",
+    kind: "phase",
+    fromT: 8.3,
+    toT: 11.2,
     label: "// ФАЗА 01 · НАШІ РІШЕННЯ · SERVICE INDEX",
-    axis: "fall",
-    playback: "scrub",
-    palette: "steel",
-    scenes: [
-      // Сцены цепи: окно [0, 1] — видео играет ровно по своему пролёту, кадр
-      // шва приходится точно на границу сегментов. axisHold [0, 1] держит
-      // сцену непрозрачной весь пролёт: движение делает камера в самом видео,
-      // переходы растворяются в совпадающих кадрах швов.
-      {
-        id: "i1",
-        videoSrc: "/video/scrub_i1.mp4",
-        posterSrc: "/poster/scrub_i1.webp",
-        duration: 8,
-        scrollVh: 100,
-        scrubWindow: [0, 1],
-        axisHold: [0, 1],
-        eyebrow: "01",
-        titleMain: "Технічне",
-        titleAccent: "обслуговування",
-        body: MAINTENANCE_ITEMS,
-        services: MAINTENANCE_WORKS,
-        cats: ["CAT-03", "CAT-07"],
-        // overlay "flow" вернётся на шаге 5: траектория линии тока ляжет
-        // по проводам реального кадра
-      },
-      {
-        id: "i2",
-        videoSrc: "/video/scrub_i2.mp4",
-        posterSrc: "/poster/scrub_i2.webp",
-        duration: 8,
-        scrollVh: 100,
-        scrubWindow: [0, 1],
-        axisHold: [0, 1],
-        eyebrow: "02",
-        titleMain: "Модернізація",
-        titleAccent: "та ремонт",
-        body: REPAIR_ITEMS,
-        // Сильнейший аргумент, рендерится отдельным блоком крупнее (см. docs/film.md, I.2).
-        services: REPAIR_EMERGENCY,
-        counter: { from: "0,00 с", to: "0,12 с", caption: "час відновлення живлення" },
-        cats: ["CAT-03", "CAT-05"],
-        cta: { label: "Аварійне відновлення", action: "lead" },
-      },
-      {
-        id: "i3",
-        videoSrc: "/video/scrub_i3.mp4",
-        posterSrc: "/poster/scrub_i3.webp",
-        duration: 8,
-        scrollVh: 100,
-        scrubWindow: [0, 1],
-        axisHold: [0, 1],
-        eyebrow: "03",
-        titleMain: "Постачання",
-        titleAccent: "обладнання",
-        body: SUPPLY_ITEMS,
-        services: SUPPLY_EXTRA,
-        cats: ["CAT-01", "CAT-02", "CAT-03", "CAT-04"],
-      },
-    ],
   },
   {
-    id: "equipment",
-    title: "Обладнання",
+    id: "maintenance",
+    kind: "copy",
+    fromT: 16.8,
+    toT: 23.2,
+    eyebrow: "01",
+    titleMain: "Технічне",
+    titleAccent: "обслуговування",
+    body: MAINTENANCE_ITEMS,
+    services: MAINTENANCE_WORKS,
+  },
+  {
+    id: "repair",
+    kind: "copy",
+    fromT: 24.8,
+    toT: 31.2,
+    eyebrow: "02",
+    titleMain: "Модернізація",
+    titleAccent: "та ремонт",
+    body: REPAIR_ITEMS,
+    services: REPAIR_EMERGENCY,
+    counter: { from: "0,00 с", to: "0,12 с", caption: "час відновлення живлення" },
+    cta: { label: "Аварійне відновлення", action: "lead" },
+  },
+  {
+    id: "supply",
+    kind: "copy",
+    fromT: 32.6,
+    toT: 37.6,
+    eyebrow: "03",
+    titleMain: "Постачання",
+    titleAccent: "обладнання",
+    body: SUPPLY_ITEMS,
+    services: SUPPLY_EXTRA,
+  },
+  {
+    id: "phase02",
+    kind: "phase",
+    fromT: 38.2,
+    toT: 41.4,
     label: "// ФАЗА 02 · ОБЛАДНАННЯ · CAT REGISTRY",
-    axis: "lateral",
-    // CLAUDE.md: акт II скраббится (в docs/film.md §4 есть заметка про автоплей — не действует).
-    playback: "scrub",
-    palette: "black",
-    scenes: [
-      {
-        // Один непрерывный проезд: три ролика по 8 с, сшитые мостами в один файл.
-        id: "ii",
-        videoSrc: "/video/scrub_ii.mp4",
-        posterSrc: "/poster/scrub_ii.webp",
-        duration: 24,
-        scrollVh: 300,
-        // Ровный проезд: время ролика линейно по всем 300vh собственного хода
-        // сцены, от открытия из перебивки до прихода следующей. Кадр при этом
-        // стоит на месте (axisHold) — вбок едет камера в самом видео, а въезд
-        // и выезд по оси lateral происходят через соседние перебивки.
-        scrubWindow: [0, 1],
-        axisHold: [0, 1],
-        eyebrow: "",
-        titleMain: "",
-        titleAccent: "",
-        // Карточка объекта выезжает, когда он в центре кадра: девять слотов
-        // прогресса проезда, счётчик 01..09 / 09
-        overlay: "catCards",
-        cats: CATALOG.map((item) => item.code),
-      },
-    ],
   },
+  // 40-64: проезд по ангару — тексты рисует карточный слой CAT (CatCards)
   {
-    id: "expertise",
-    title: "Експертиза",
+    id: "phase03",
+    kind: "phase",
+    fromT: 64.4,
+    toT: 67.8,
     label: "// ФАЗА 03 · ЕКСПЕРТИЗА · OBJECT CLASSES",
-    axis: "rise",
-    playback: "autoplay",
-    palette: "dawn",
-    scenes: [
-      {
-        id: "iii1",
-        videoSrc: "/video/auto_iii1.mp4",
-        posterSrc: "/poster/auto_iii1.webp",
-        duration: 6,
-        scrollVh: 90,
-        eyebrow: EXPERTISE[0].num,
-        titleMain: "Генерація",
-        titleAccent: "енергії",
-        body: EXPERTISE[0].points,
-      },
-      {
-        id: "iii2",
-        videoSrc: "/video/auto_iii2.mp4",
-        posterSrc: "/poster/auto_iii2.webp",
-        duration: 6,
-        scrollVh: 90,
-        eyebrow: EXPERTISE[1].num,
-        titleMain: "Підстанції",
-        titleAccent: "та мережі",
-        body: EXPERTISE[1].points,
-        // overlay "flow" вернётся на шаге 5: линия тока пройдёт по проводам
-        // ЛЭП реального кадра
-      },
-      {
-        id: "iii3",
-        videoSrc: "/video/auto_iii3.mp4",
-        posterSrc: "/poster/auto_iii3.webp",
-        duration: 6,
-        scrollVh: 90,
-        eyebrow: EXPERTISE[2].num,
-        titleMain: "Промислові",
-        titleAccent: "об’єкти",
-        body: EXPERTISE[2].points,
-      },
-      {
-        id: "iii4",
-        videoSrc: "/video/auto_iii4.mp4",
-        posterSrc: "/poster/auto_iii4.webp",
-        duration: 6,
-        scrollVh: 90,
-        eyebrow: EXPERTISE[3].num,
-        titleMain: "Інфраструктурні",
-        titleAccent: "системи",
-        body: EXPERTISE[3].points,
-      },
-    ],
   },
   {
-    id: "quality",
-    title: "Якість",
+    id: "exp1",
+    kind: "copy",
+    fromT: 72.8,
+    toT: 79.2,
+    eyebrow: EXPERTISE[0].num,
+    titleMain: "Генерація",
+    titleAccent: "енергії",
+    body: EXPERTISE[0].points,
+  },
+  {
+    id: "exp2",
+    kind: "copy",
+    fromT: 80.8,
+    toT: 87.2,
+    eyebrow: EXPERTISE[1].num,
+    titleMain: "Підстанції",
+    titleAccent: "та мережі",
+    body: EXPERTISE[1].points,
+  },
+  {
+    id: "exp3",
+    kind: "copy",
+    fromT: 88.8,
+    toT: 95.2,
+    eyebrow: EXPERTISE[2].num,
+    titleMain: "Промислові",
+    titleAccent: "об’єкти",
+    body: EXPERTISE[2].points,
+  },
+  {
+    id: "exp4",
+    kind: "copy",
+    fromT: 96.8,
+    toT: 103.2,
+    eyebrow: EXPERTISE[3].num,
+    titleMain: "Інфраструктурні",
+    titleAccent: "системи",
+    body: EXPERTISE[3].points,
+  },
+  {
+    id: "phase04",
+    kind: "phase",
+    fromT: 104.6,
+    toT: 108.6,
+    light: true,
     label: "// ФАЗА 04 · ЯКІСТЬ · CONTROL PROTOCOL",
-    axis: "still",
-    playback: "autoplay",
-    palette: "white",
-    scenes: [
-      // Названия фаз — с сайта компании (PHASES), а не из film.md:
-      // IV.1 у них «Контроль якості», а не «Вхідний контроль»
-      {
-        id: "iv1",
-        videoSrc: "/video/auto_iv1.mp4",
-        posterSrc: "/poster/auto_iv1.webp",
-        duration: 5,
-        scrollVh: 80,
-        eyebrow: PHASES[0].code,
-        titleMain: "Контроль",
-        titleAccent: "якості",
-        body: PHASES[0].points,
-        overlay: "phaseBar",
-      },
-      {
-        id: "iv2",
-        videoSrc: "/video/auto_iv2.mp4",
-        posterSrc: "/poster/auto_iv2.webp",
-        duration: 5,
-        scrollVh: 80,
-        eyebrow: PHASES[1].code,
-        titleMain: "Документальний",
-        titleAccent: "супровід",
-        body: PHASES[1].points,
-        overlay: "phaseBar",
-      },
-      {
-        id: "iv3",
-        videoSrc: "/video/auto_iv3.mp4",
-        posterSrc: "/poster/auto_iv3.webp",
-        duration: 5,
-        scrollVh: 80,
-        eyebrow: PHASES[2].code,
-        titleMain: "Відповідність",
-        titleAccent: "стандартам",
-        body: PHASES[2].points,
-        overlay: "phaseBar",
-      },
-      {
-        id: "iv4",
-        videoSrc: "/video/auto_iv4.mp4",
-        posterSrc: "/poster/auto_iv4.webp",
-        duration: 5,
-        scrollVh: 80,
-        eyebrow: PHASES[3].code,
-        titleMain: "Технічний",
-        titleAccent: "контроль",
-        body: PHASES[3].points,
-        overlay: "phaseBar",
-      },
-    ],
+  },
+  // Названия фаз — с сайта компании (PHASES), а не из oneshot.md
+  {
+    id: "q1",
+    kind: "copy",
+    fromT: 110.8,
+    toT: 115.4,
+    light: true,
+    eyebrow: PHASES[0].code,
+    titleMain: "Контроль",
+    titleAccent: "якості",
+    body: PHASES[0].points,
   },
   {
-    id: "epilogue",
-    title: "Взаємодія",
+    id: "q2",
+    kind: "copy",
+    fromT: 116.6,
+    toT: 120.5,
+    light: true,
+    eyebrow: PHASES[1].code,
+    titleMain: "Документальний",
+    titleAccent: "супровід",
+    body: PHASES[1].points,
+  },
+  {
+    id: "q3",
+    kind: "copy",
+    fromT: 121.6,
+    toT: 125.5,
+    light: true,
+    eyebrow: PHASES[2].code,
+    titleMain: "Відповідність",
+    titleAccent: "стандартам",
+    body: PHASES[2].points,
+  },
+  {
+    id: "q4",
+    kind: "copy",
+    fromT: 126.6,
+    toT: 130.5,
+    light: true,
+    eyebrow: PHASES[3].code,
+    titleMain: "Технічний",
+    titleAccent: "контроль",
+    body: PHASES[3].points,
+  },
+  {
+    id: "phase05",
+    kind: "phase",
+    fromT: 131.6,
+    toT: 134.8,
     label: "// ФАЗА 05 · ВЗАЄМОДІЯ · SYSTEM LINK",
-    axis: "rise",
-    playback: "scrub",
-    palette: "cold",
-    scenes: [
-      {
-        id: "ep",
-        videoSrc: "/video/scrub_ep.mp4",
-        posterSrc: "/poster/scrub_ep.webp",
-        duration: 8,
-        scrollVh: 120,
-        // Взлёт играет, пока растворяется перебивка «ФАЗА 05» (d от -0.5 до 0);
-        // на дне фильма — финальный кадр, орбита в огнях, дальше секции.
-        scrubWindow: [-0.5, 0],
-        eyebrow: CONTACTS.status,
-        titleMain: "Взаємодія",
-        titleAccent: CONTACTS.statusLine,
-        body: [CONTACTS.address, CONTACTS.phone, CONTACTS.email],
-        // Кольцо фильма: контур и огни впечатаны в футаж (финальный кадр
-        // взлёта = контурный кадр пролога), рисованный оверлей не нужен.
-        cta: { label: "Запит консультації", action: "lead" },
-      },
-    ],
+  },
+  {
+    id: "contact",
+    kind: "copy",
+    // toT за пределом фильма: контакты остаются видимыми на финальном кадре,
+    // пока sticky-сцена не уедет под секции
+    fromT: 138.5,
+    toT: 999,
+    eyebrow: CONTACTS.status,
+    titleMain: "Взаємодія",
+    titleAccent: CONTACTS.statusLine,
+    body: [CONTACTS.address, CONTACTS.phone, CONTACTS.email],
+    cta: { label: "Запит консультації", action: "lead" },
   },
 ];
 
-// Полная высота фильма: сумма scrollVh всех сцен плюс перебивка перед каждым актом, кроме первого.
-export const totalScrollVh = (film: Act[] = FILM): number =>
-  film.reduce(
-    (sum, act, index) =>
-      sum +
-      (index > 0 ? PHASE_CARD_VH : 0) +
-      act.scenes.reduce((s, scene) => s + scene.scrollVh, 0),
-    0,
-  );
-
-// Высота скролл-спейсера: фильм должен остановиться, когда последняя сцена встаёт
-// в пик (d = 0), поэтому её собственный выездной ход в высоту не входит — вместо
-// него один вьюпорт. Когда после фильма появятся обычные секции, эпилог сам
-// уедет вверх вместе со sticky-сценой.
-export const stageHeightVh = (film: Act[] = FILM): number => {
-  const lastAct = film[film.length - 1];
-  const lastScene = lastAct?.scenes[lastAct.scenes.length - 1];
-  return totalScrollVh(film) - (lastScene?.scrollVh ?? 0) + 100;
+// Тайминги оверлеев и хрома на глобальном таймлайне.
+export const TIMELINE = {
+  // UkraineMap поверх V01 и V20 (oneshot.md, раздел 6, п.7).
+  ukraine: {
+    // Пролог: каскад огней за дрейф, на снижении (конец V01 → первая треть
+    // V02) слой растёт навстречу камере (scale 1 → 2.6) и растворяется
+    // в облаках синхронно с падением.
+    igniteFrom: 0.5,
+    igniteTo: 6.0,
+    diveFrom: 7.0,
+    diveTo: 10.7,
+    // Эпилог (V20): обратное движение — проступает из приближения
+    // и садится на масштаб 1 к финальному кадру.
+    riseFrom: 140.0,
+    riseTo: 146.5,
+  },
+  // Шкала PHASE 01..04: лаборатория, V15-V18.
+  phaseBar: { fromT: 110, toT: 131 },
+  // Инверсия хрома в светлой части (белая хмара → отъезд к окну).
+  chromeLight: { fromT: 105, toT: 132.5 },
 };
+
+// Высота скролл-спейсера: весь таймлайн плюс один вьюпорт покоя на финальном
+// кадре. Скраббируемая дистанция = высота спейсера минус вьюпорт.
+export const stageHeightVh = (segments: Segment[] = SEGMENTS): number =>
+  totalScrollVh(segments) + 100;
