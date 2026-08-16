@@ -410,6 +410,10 @@ export default function FilmStage({ media }: { media?: MediaAvailability }) {
           seg.pendingTime = null;
           video.preload = "none";
           video.load();
+          // load() стирает отрисованный кадр элемента, но rVFC-отметка
+          // осталась бы «свежей» (парковка ≈ цель на стыке) и пропустила
+          // бы свап до первой реальной презентации — постер в кадре
+          seg.paintedTime = -1;
         }
         if (!seg.mediaActive) continue;
         if (IOS_AUTOPLAY_FALLBACK && mobileView) {
@@ -509,10 +513,10 @@ export default function FilmStage({ media }: { media?: MediaAvailability }) {
         const frameReady =
           !tv ||
           (tv.readyState >= 2 &&
-            (paintedNear ||
-              (target.paintedTime < 0 &&
-                !tv.seeking &&
-                Math.abs(tv.currentTime - wantTime) < 0.4)));
+            (hasRVFC
+              ? paintedNear
+              : !tv.seeking &&
+                Math.abs(tv.currentTime - wantTime) < 0.4));
         // Предохранитель от заморозки ленты — но свап на слой БЕЗ
         // декодированных данных запрещён всегда: постер/градиент вместо
         // кадра и есть вспышка; старый кадр держится, пока данные не придут
@@ -534,7 +538,7 @@ export default function FilmStage({ media }: { media?: MediaAvailability }) {
               seg.el.style.visibility = "hidden";
               seg.el.style.opacity = "0";
               seg.el.style.zIndex = "";
-            }, 220);
+            }, 560);
             const old = hideTimers.get(prevIdx);
             if (old !== undefined) window.clearTimeout(old);
             hideTimers.set(prevIdx, timer);
@@ -641,6 +645,7 @@ export default function FilmStage({ media }: { media?: MediaAvailability }) {
       segments.forEach((seg) => {
         if (seg.mediaActive && seg.video && seg.video.readyState === 0) {
           seg.video.load();
+          seg.paintedTime = -1;
         }
       });
     };
