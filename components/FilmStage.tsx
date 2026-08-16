@@ -77,6 +77,11 @@ const MOBILE_SEEK_INTERVAL_MS = 40;
 const COPY_FADE_S = 0.5;
 const COPY_SHIFT_PX = 16;
 
+// Автопросмотр кнопкой Play: быстрее реального темпа таймлайна — полные
+// 155 секунд ощущаются вялыми, 1.75× держит энергию, движение в кадре
+// остаётся читаемым (лёгкая ускоренная перемотка)
+const AUTOPLAY_SPEED = 1.75;
+
 const clamp01 = (value: number) => Math.min(1, Math.max(0, value));
 
 export default function FilmStage({ media }: { media?: MediaAvailability }) {
@@ -204,6 +209,11 @@ export default function FilmStage({ media }: { media?: MediaAvailability }) {
       visible: index === 0,
       mediaActive: false,
       pendingTime: null as number | null,
+      // Время последнего РЕАЛЬНО отрисованного кадра (rVFC): readyState и
+      // currentTime врут для скрытых слоёв — декодер готов, но композитор
+      // ещё не презентовал кадр, после свапа мелькает устаревшая картинка
+      paintedTime: -1,
+      rvfcId: 0,
     }));
     const copyEls = Array.from(
       document.querySelectorAll<HTMLElement>("[data-copy-block]"),
@@ -235,10 +245,33 @@ export default function FilmStage({ media }: { media?: MediaAvailability }) {
     let lastPosVh = -1;
     // Отложенная подмена: реально видимый сегмент может отставать от
     // активного, пока целевой кадр не декодирован — иначе на быстром
-    // скролле мелькают запаркованные кадры и постеры («вспышки»)
-    let shownIdx = 0;
+    // скролле мелькают запаркованные кадры и постеры («вспышки»).
+    // Стартуем с сегмента, который УЖЕ видим в DOM: при перезагрузке в
+    // середине фильма его показал пре-гидрационный скрипт, и прогрев
+    // не должен гасить единственный отрисованный слой до opacity 0.01.
+    let shownIdx = segments.findIndex(
+      (seg) =>
+        seg.el.style.visibility === "visible" && seg.el.style.zIndex === "2",
+    );
+    if (shownIdx < 0)
+      shownIdx = segments.findIndex(
+        (seg) => seg.el.style.visibility === "visible",
+      );
+    if (shownIdx < 0) shownIdx = 0;
+    // Нормализация слоёв: ремоунт эффекта (смена breakpoint) мог оставить
+    // «сироту» прогрева на opacity 0.01 / z-index 2 — приводим все слои
+    // к единственному видимому shownIdx
+    segments.forEach((seg, i) => {
+      seg.visible = i === shownIdx;
+      seg.el.style.zIndex = "";
+      seg.el.style.visibility = i === shownIdx ? "visible" : "hidden";
+      seg.el.style.opacity = i === shownIdx ? "1" : "0";
+    });
     let switchWaitAt = 0;
     let pendingSwitch = false;
+    // Прогреваемый целевой сегмент: на время ожидания подмены держится на
+    // почти нулевой непрозрачности — браузер обязан презентовать его кадры
+    let warmIdx = -1;
     const hideTimers = new Map<number, number>();
     let lastCatsAt = -1;
     // Видео догрузилось при неподвижном скролле — ранний выход applyScroll
@@ -263,6 +296,26 @@ export default function FilmStage({ media }: { media?: MediaAvailability }) {
       seg.video?.addEventListener("loadedmetadata", invalidate);
       seg.video?.addEventListener("seeked", seekedHandlers[index]);
     });
+
+    // Подтверждение презентации кадра: rVFC срабатывает, когда кадр реально
+    // ушёл в композицию — единственный честный сигнал для решения о подмене
+    const hasRVFC =
+      typeof HTMLVideoElement !== "undefined" &&
+      "requestVideoFrameCallback" in HTMLVideoElement.prototype;
+    if (hasRVFC) {
+      segments.forEach((seg) => {
+        const video = seg.video;
+        if (!video) return;
+        const onFrame = (
+          _now: number,
+          meta: VideoFrameCallbackMetadata,
+        ) => {
+          seg.paintedTime = meta.mediaTime;
+          seg.rvfcId = video.requestVideoFrameCallback(onFrame);
+        };
+        seg.rvfcId = video.requestVideoFrameCallback(onFrame);
+      });
+    }
 
     // Квантованный сик с гейтом занятости. step — шаг квантизации: активный
     // сегмент на быстром скролле сикается крупнее (см. applyScroll),
@@ -349,9 +402,10 @@ export default function FilmStage({ media }: { media?: MediaAvailability }) {
           video.preload = "auto";
           // iOS считает preload хинтом и без пинка не грузит ничего
           if (video.readyState === 0) video.load();
-        } else if (outFar && seg.mediaActive && i !== shownIdx) {
-          // Видимый сегмент не выгружается никогда — иначе при огромном
-          // прыжке он мигнёт постером прежде, чем целевой будет готов
+        } else if (outFar && seg.mediaActive && !seg.visible) {
+          // Видимый слой не выгружается никогда: ни показанный, ни
+          // гаснущий после подмены (visible до таймера скрытия) — иначе
+          // load() сбросит его на постер прямо под 140мс-фейдом нового
           seg.mediaActive = false;
           seg.pendingTime = null;
           video.preload = "none";
@@ -412,16 +466,58 @@ export default function FilmStage({ media }: { media?: MediaAvailability }) {
           from +
           ((t - target.span.tStart) / target.span.duration) *
             (target.span.duration - from);
-        const frameReady =
-          !tv ||
-          (tv.readyState >= 2 &&
-            !tv.seeking &&
-            Math.abs(tv.currentTime - wantTime) < 0.4);
         if (!pendingSwitch) {
           pendingSwitch = true;
           switchWaitAt = performance.now();
         }
-        if (frameReady || performance.now() - switchWaitAt > 250) {
+        // Прогрев цели: слой на opacity 0.01 (глазу невидим под полным
+        // старым... точнее НАД старым, но 1% неразличим) — композитор
+        // презентует его кадры, rVFC начинает тикать, устаревшая картинка
+        // слоя заменяется декодированной ещё ДО проявления
+        if (warmIdx !== active) {
+          if (warmIdx >= 0 && warmIdx !== shownIdx && !hideTimers.has(warmIdx)) {
+            const w = segments[warmIdx];
+            w.visible = false;
+            w.el.style.visibility = "hidden";
+            w.el.style.opacity = "0";
+            w.el.style.zIndex = "";
+          }
+          warmIdx = active;
+          // Бюджет предохранителя — на ЦЕЛЬ, не на всю серию подмен:
+          // без перештамповки пролёт через несколько холодных сегментов
+          // тратит 350мс на первом, и каждая следующая цель свапается
+          // мгновенно по одному readyState — непрезентованным кадром
+          switchWaitAt = performance.now();
+          const own = hideTimers.get(active);
+          if (own !== undefined) {
+            window.clearTimeout(own);
+            hideTimers.delete(active);
+          }
+          target.el.style.zIndex = "2";
+          target.el.style.visibility = "visible";
+          target.el.style.opacity = "0.01";
+        }
+        // Готовность — по ПРЕЗЕНТОВАННОМУ кадру (rVFC): показанная
+        // картинка возле цели → свап, даже если параллельно летит новый
+        // сик. При непрерывном скролле сик перевыдаётся каждый проход и
+        // seeking почти всегда true — ждать его окончания значило бы
+        // резолвить каждый стык 350мс-предохранителем («замер-скачок»).
+        // Без rVFC (paintedTime всегда -1) — старая эвристика декодера.
+        const paintedNear =
+          target.paintedTime >= 0 &&
+          Math.abs(target.paintedTime - wantTime) < 0.4;
+        const frameReady =
+          !tv ||
+          (tv.readyState >= 2 &&
+            (paintedNear ||
+              (target.paintedTime < 0 &&
+                !tv.seeking &&
+                Math.abs(tv.currentTime - wantTime) < 0.4)));
+        // Предохранитель от заморозки ленты — но свап на слой БЕЗ
+        // декодированных данных запрещён всегда: постер/градиент вместо
+        // кадра и есть вспышка; старый кадр держится, пока данные не придут
+        const stale = performance.now() - switchWaitAt > 350;
+        if (frameReady || (stale && !!tv && tv.readyState >= 2)) {
           // Кроссфейд БЕЗ провала яркости: новый сегмент наплывает ПОВЕРХ
           // (z-index выше), старый держит полную непрозрачность до конца
           // фейда — одновременное гашение обоих слоёв просвечивало бы
@@ -443,20 +539,27 @@ export default function FilmStage({ media }: { media?: MediaAvailability }) {
             if (old !== undefined) window.clearTimeout(old);
             hideTimers.set(prevIdx, timer);
           }
-          const own = hideTimers.get(active);
-          if (own !== undefined) {
-            window.clearTimeout(own);
-            hideTimers.delete(active);
-          }
           target.el.style.zIndex = "2";
           target.el.style.visibility = "visible";
           target.el.style.opacity = "1";
           target.visible = true;
           shownIdx = active;
           pendingSwitch = false;
+          warmIdx = -1;
         }
       } else {
         pendingSwitch = false;
+        // Разворот до подмены: брошенный прогреваемый слой гасится
+        if (warmIdx >= 0) {
+          if (warmIdx !== shownIdx && !hideTimers.has(warmIdx)) {
+            const w = segments[warmIdx];
+            w.visible = false;
+            w.el.style.visibility = "hidden";
+            w.el.style.opacity = "0";
+            w.el.style.zIndex = "";
+          }
+          warmIdx = -1;
+        }
       }
 
       // CAT-тег: cats активного сегмента, пуш только при смене
@@ -524,7 +627,13 @@ export default function FilmStage({ media }: { media?: MediaAvailability }) {
     // предзагрузки и форсим полный переапплай — иначе первые сики вязнут
     // и скролл «тупит», пока всё не прогреется само
     const onVisibility = () => {
-      if (document.visibilityState !== "visible") return;
+      if (document.visibilityState !== "visible") {
+        // Уход в фон при автопросмотре: rAF замирает, а часы Lenis нет —
+        // после возврата твин прыгнул бы вперёд на всё скрытое время
+        // (в холодные сегменты). Останавливаем на месте.
+        cancelAutoplay();
+        return;
+      }
       lastTime = -1;
       smoothVelocity = 0;
       lastSeekStamp = 0;
@@ -613,7 +722,7 @@ export default function FilmStage({ media }: { media?: MediaAvailability }) {
         window.addEventListener("keydown", onUserGesture);
         const maxScroll = wrap.offsetHeight - stage.offsetHeight;
         lenis.scrollTo(maxScroll, {
-          duration: Math.max(2, totalT - lastT),
+          duration: Math.max(2, (totalT - lastT) / AUTOPLAY_SPEED),
           easing: (x: number) => x,
           onComplete: () => {
             if (!autoplayActive) return;
@@ -675,6 +784,9 @@ export default function FilmStage({ media }: { media?: MediaAvailability }) {
         seg.video?.removeEventListener("loadeddata", invalidate);
         seg.video?.removeEventListener("loadedmetadata", invalidate);
         seg.video?.removeEventListener("seeked", seekedHandlers[index]);
+        if (hasRVFC && seg.rvfcId && seg.video) {
+          seg.video.cancelVideoFrameCallback(seg.rvfcId);
+        }
         seg.video?.pause();
       });
     };
@@ -777,7 +889,7 @@ export default function FilmStage({ media }: { media?: MediaAvailability }) {
           data-play-button=""
           aria-label={CHROME.play}
           onClick={() => autoplayRef.current?.start()}
-          className="fixed bottom-[88px] left-1/2 z-40 flex -translate-x-1/2 cursor-pointer flex-col items-center gap-3"
+          className="fixed left-1/2 top-1/2 z-40 flex -translate-x-1/2 -translate-y-1/2 cursor-pointer flex-col items-center gap-3"
         >
           <span className="flex h-14 w-14 items-center justify-center rounded-full border border-[rgba(238,242,247,0.35)] bg-[rgba(2,3,10,0.35)] backdrop-blur-sm transition-[border-color,transform] duration-300 hover:scale-105 hover:border-[var(--gold)]">
             <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden>
