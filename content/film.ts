@@ -343,19 +343,22 @@ export const SOUND = {
   ] as string[],
   whooshGain: 0.5,
   whooshCooldownMs: 450,
-  // Голос: реплики привязаны к карточкам таймлайна (fromT — момент
-  // старта при автопросмотре), каждая играет один раз за сессию.
-  // Сортировка по fromT обязательна. Тексты — формулировки сайта,
-  // диктор ElevenLabs v3. Финальные карточки q3/q4 озвучены отдельными
-  // репликами, эпилог читается на карточке контактов, не на титре.
+  // Голос: реплика на КАЖДУЮ карточку таймлайна, fromT = появление
+  // карточки. Длительность каждой реплики проверена против бюджета
+  // (расстояние до следующей / 1.75) — обрезки исключены. Сортировка
+  // по fromT обязательна. Тексты — формулировки сайта, диктор v3.
   voice: [
     { id: "vo_prologue", src: "/audio/vo_prologue.mp3", fromT: 0.5 },
-    { id: "vo_solutions", src: "/audio/vo_solutions.mp3", fromT: 25 },
+    { id: "vo_maintenance", src: "/audio/vo_maintenance.mp3", fromT: 25 },
+    { id: "vo_repair", src: "/audio/vo_repair.mp3", fromT: 33 },
     { id: "vo_equipment", src: "/audio/vo_equipment.mp3", fromT: 41 },
-    { id: "vo_expertise", src: "/audio/vo_expertise.mp3", fromT: 73 },
-    { id: "vo_quality", src: "/audio/vo_quality.mp3", fromT: 117.5 },
-    { id: "vo_standards", src: "/audio/vo_standards.mp3", fromT: 129.8 },
-    { id: "vo_control", src: "/audio/vo_control.mp3", fromT: 134.8 },
+    { id: "vo_gen", src: "/audio/vo_gen.mp3", fromT: 81 },
+    { id: "vo_grid", src: "/audio/vo_grid.mp3", fromT: 89 },
+    { id: "vo_industry", src: "/audio/vo_industry.mp3", fromT: 97 },
+    { id: "vo_infra", src: "/audio/vo_infra.mp3", fromT: 105 },
+    { id: "vo_quality2", src: "/audio/vo_quality2.mp3", fromT: 119 },
+    { id: "vo_standards2", src: "/audio/vo_standards2.mp3", fromT: 129.8 },
+    { id: "vo_control2", src: "/audio/vo_control2.mp3", fromT: 134.8 },
     { id: "vo_epilogue", src: "/audio/vo_epilogue.mp3", fromT: 147 },
   ] as { id: string; src: string; fromT: number }[],
   // Дакинг фона под голосом
