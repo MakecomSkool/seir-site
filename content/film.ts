@@ -323,8 +323,8 @@ export const SOUND = {
     { id: "mech", src: "/audio/amb_machines.mp3", fromT: 24, toT: 40, gain: 0.28 },
     { id: "hum", src: "/audio/hum_transformer.mp3", fromT: 43, toT: 70, gain: 0.32 },
   ] as SoundBed[],
-  // Музыкальная подложка на весь фильм: энергичный рекламный
-  // корпоративный трек с чёткими переходами (Eleven Music)
+  // Музыкальная подложка на весь фильм: электронный хард-рок в духе
+  // Deep Purple — орган, синтовый риф, быстрые барабаны (Eleven Music)
   music: { src: "/audio/music_bed.mp3", gain: 0.42 },
   // Вжухи пролётов на сменах сегментов (громкость и питч от скорости)
   whooshes: [
@@ -334,16 +334,21 @@ export const SOUND = {
   ] as string[],
   whooshGain: 0.5,
   whooshCooldownMs: 450,
-  // Голос: презентационная реплика на входе в раздел, один раз за сессию.
-  // Текст собран из формулировок сайта; диктор ElevenLabs multilingual v2
+  // Голос: реплики привязаны к карточкам таймлайна (fromT — момент
+  // старта при автопросмотре), каждая играет один раз за сессию.
+  // Сортировка по fromT обязательна. Тексты — формулировки сайта,
+  // диктор ElevenLabs v3. Финальные карточки q3/q4 озвучены отдельными
+  // репликами, эпилог читается на карточке контактов, не на титре.
   voice: [
-    { section: "prologue", src: "/audio/vo_prologue.mp3" },
-    { section: "solutions", src: "/audio/vo_solutions.mp3" },
-    { section: "equipment", src: "/audio/vo_equipment.mp3" },
-    { section: "expertise", src: "/audio/vo_expertise.mp3" },
-    { section: "quality", src: "/audio/vo_quality.mp3" },
-    { section: "epilogue", src: "/audio/vo_epilogue.mp3" },
-  ] as { section: FilmSectionId; src: string }[],
+    { id: "vo_prologue", src: "/audio/vo_prologue.mp3", fromT: 0.5 },
+    { id: "vo_solutions", src: "/audio/vo_solutions.mp3", fromT: 25 },
+    { id: "vo_equipment", src: "/audio/vo_equipment.mp3", fromT: 41 },
+    { id: "vo_expertise", src: "/audio/vo_expertise.mp3", fromT: 73 },
+    { id: "vo_quality", src: "/audio/vo_quality.mp3", fromT: 117.5 },
+    { id: "vo_standards", src: "/audio/vo_standards.mp3", fromT: 129.8 },
+    { id: "vo_control", src: "/audio/vo_control.mp3", fromT: 134.8 },
+    { id: "vo_epilogue", src: "/audio/vo_epilogue.mp3", fromT: 147 },
+  ] as { id: string; src: string; fromT: number }[],
   // Дакинг фона под голосом
   voiceDuck: 0.4,
 };

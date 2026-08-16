@@ -26,6 +26,7 @@ import {
   PALETTES,
   SECTIONS,
   SEGMENTS,
+  SOUND,
   TIMELINE,
   segmentSpans,
   stageHeightVh,
@@ -369,8 +370,9 @@ export default function FilmStage({ media }: { media?: MediaAvailability }) {
     let lastT = 0;
     let lastActiveStep = FRAME_STEP;
     let lastSeekStamp = 0;
-    // Голос: реплика на входе в раздел (движок сам не повторяет сыгранные)
-    let lastVoiceSection = -1;
+    // Голос: последняя пересечённая по fromT реплика (движок сам не
+    // повторяет сыгранные за сессию)
+    let lastVoiceId: string | null = null;
 
     const applyScroll = () => {
       if (!vhUnit) return;
@@ -670,11 +672,19 @@ export default function FilmStage({ media }: { media?: MediaAvailability }) {
           break;
         }
       }
-      // Голос — только в автопросмотре: ручной скроллер сам управляет
-      // темпом, навязанная реплика диссонирует с его позицией
-      if (sectionIndex !== lastVoiceSection) {
-        lastVoiceSection = sectionIndex;
-        if (autoplayActive) sound.voice(FILM_SECTIONS[sectionIndex].id);
+      // Голос — только в автопросмотре: реплики привязаны к карточкам
+      // таймлайна (SOUND.voice отсортирован по fromT); играет последняя
+      // пересечённая, сыгранные движок не повторяет
+      if (autoplayActive) {
+        let vid: string | null = null;
+        for (const v of SOUND.voice) {
+          if (t >= v.fromT) vid = v.id;
+          else break;
+        }
+        if (vid && vid !== lastVoiceId) {
+          lastVoiceId = vid;
+          sound.voice(vid);
+        }
       }
       // Ручной скролл без нажатия Play прячет кнопку навсегда (мутация
       // ref до setState — защита от повторных вызовов из rAF до ре-рендера)
@@ -820,10 +830,9 @@ export default function FilmStage({ media }: { media?: MediaAvailability }) {
         autoplayActive = true;
         playStateRef.current = "playing";
         setPlayState("playing");
-        // Клик — жест: контекст разблокируется, реплика текущего раздела
-        // стартует сразу (смены раздела для первого ещё не будет)
+        // Клик — жест: контекст разблокируется; первую реплику запустит
+        // пересечение fromT в applyScroll, как только твин тронется
         sound.unlock();
-        sound.voice(FILM_SECTIONS[uiRef.current.section].id);
         window.addEventListener("wheel", onUserGesture, { passive: true });
         window.addEventListener("touchstart", onUserGesture, { passive: true });
         window.addEventListener("mousedown", onUserGesture);
