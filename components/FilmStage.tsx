@@ -65,9 +65,12 @@ const FRAME_STEP = 1 / 24;
 // читается как ускоренная перемотка, а не борьба с декодером.
 const FAST_SCROLL_DESKTOP = 1500;
 const VERY_FAST_SCROLL_DESKTOP = 3200;
-const FAST_SCROLL_MOBILE = 800;
-const VERY_FAST_SCROLL_MOBILE = 1800;
+const FAST_SCROLL_MOBILE = 500;
+const VERY_FAST_SCROLL_MOBILE = 1600;
 const EXTREME_SCROLL_MOBILE = 3200;
+// Мобильный скраббинг: не чаще одного сика в 40 мс (~25 кадр/с) — глазом
+// неотличимо от покадрового, а декодов 1080-кадров вдвое меньше
+const MOBILE_SEEK_INTERVAL_MS = 40;
 
 // Тексты: появление/уход на [fromT, toT] — только opacity + translateY.
 const COPY_FADE_S = 0.5;
@@ -281,6 +284,7 @@ export default function FilmStage({ media }: { media?: MediaAvailability }) {
 
     let lastT = 0;
     let lastActiveStep = FRAME_STEP;
+    let lastSeekStamp = 0;
 
     const applyScroll = () => {
       if (!vhUnit) return;
@@ -353,12 +357,22 @@ export default function FilmStage({ media }: { media?: MediaAvailability }) {
             seekTo(seg, i < active ? seg.span.duration : 0);
           }
         } else if (i === active) {
-          seg.pendingTime = null;
-          // videoFrom: сегмент скраббится от смещения до конца — открытие
-          // фильма с эффектного кадра (только первый сегмент)
-          const from = seg.span.videoFrom ?? 0;
-          const lp = (t - seg.span.tStart) / seg.span.duration;
-          seekTo(seg, from + lp * (seg.span.duration - from), activeStep);
+          // Мобильный гейт частоты: пропущенный проход доиграет следующий
+          // rAF — цель пересчитывается каждый кадр, потерь позиции нет
+          const now = performance.now();
+          if (mobileView && now - lastSeekStamp < MOBILE_SEEK_INTERVAL_MS) {
+            // не выдаём новый сик; форсим пересчёт на следующем rAF, чтобы
+            // финальная позиция не осталась недосикнутой после остановки
+            lastPosVh = -1;
+          } else {
+            lastSeekStamp = now;
+            seg.pendingTime = null;
+            // videoFrom: сегмент скраббится от смещения до конца — открытие
+            // фильма с эффектного кадра (только первый сегмент)
+            const from = seg.span.videoFrom ?? 0;
+            const lp = (t - seg.span.tStart) / seg.span.duration;
+            seekTo(seg, from + lp * (seg.span.duration - from), activeStep);
+          }
         } else {
           // Соседи паркуются на своём граничном кадре: подмена на границе
           // мгновенно показывает совпадающий кадр, без ожидания сика
@@ -478,11 +492,13 @@ export default function FilmStage({ media }: { media?: MediaAvailability }) {
       mobileView
         ? {
             syncTouch: true,
-            syncTouchLerp: 0.09,
-            touchMultiplier: 0.9,
+            // 0.14: страница догоняет палец быстро — сглаживание есть,
+            // запаздывания («тупит») нет; 0.09 было слишком тяжёлым
+            syncTouchLerp: 0.14,
+            touchMultiplier: 1.0,
             // <1.7 (дефолт): резкий флик не возводится в степень —
             // инерция короче, свайп не улетает сквозь пол-фильма
-            touchInertiaExponent: 1.2,
+            touchInertiaExponent: 1.35,
           }
         : {},
     );
