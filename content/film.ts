@@ -318,14 +318,20 @@ export const SOUND = {
   // механизмов в мастерских, гул трансформатора в ангаре
   extras: [
     { id: "rain", src: "/audio/amb_rain.mp3", fromT: 25, toT: 41, gain: 0.55 },
+    // Техника выезжает: дизель, кран, лебёдка, сигнал заднего хода
+    { id: "veh", src: "/audio/amb_vehicles.mp3", fromT: 25, toT: 41, gain: 0.34 },
     { id: "mech", src: "/audio/amb_machines.mp3", fromT: 24, toT: 40, gain: 0.28 },
     { id: "hum", src: "/audio/hum_transformer.mp3", fromT: 43, toT: 70, gain: 0.32 },
   ] as SoundBed[],
-  // Музыкальная подложка на весь фильм, тихо под эмбиентами (Eleven Music)
+  // Музыкальная подложка на весь фильм: украинский характер — бандура,
+  // сопилка, тёплый струнный дрон (Eleven Music)
   music: { src: "/audio/music_bed.mp3", gain: 0.32 },
-  // Вжухи на сменах сегментов отключены решением пользователя («не в
-  // тему»); пустой список = выключено, механика в движке сохранена
-  whooshes: [] as string[],
+  // Вжухи пролётов на сменах сегментов (громкость и питч от скорости)
+  whooshes: [
+    "/audio/whoosh_a.mp3",
+    "/audio/whoosh_b.mp3",
+    "/audio/whoosh_c.mp3",
+  ] as string[],
   whooshGain: 0.5,
   whooshCooldownMs: 450,
   // Голос: презентационная реплика на входе в раздел, один раз за сессию.
