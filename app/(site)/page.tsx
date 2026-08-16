@@ -36,9 +36,12 @@ function buildMediaAvailability(): MediaAvailability {
   return media;
 }
 
-// Выполняется при парсинге SSR-разметки, до гидрации: восстанавливает
-// состояние таймлайна по уже восстановленной позиции скролла, чтобы
-// перезагрузка в середине фильма не показывала пролог. Firefox/Safari
+// Выполняется при парсинге SSR-разметки, до гидрации. Правило продукта:
+// перезагрузка и возврат на страницу всегда начинают фильм СВЕРХУ —
+// scrollRestoration=manual плюс явный scrollTo(0,0) до первого кадра
+// (возврат из bfcache обрабатывает pageshow в FilmStage). Остальная
+// машинерия — страховка на случай, если браузер всё же навязал позицию:
+// слои и тексты приводятся к ней без показа пролога. Firefox/Safari
 // восстанавливают скролл после load, поэтому расчёт повторяется по
 // одноразовому scroll-слушателю, который снимает себя, как только rAF-цикл
 // FilmStage берёт управление (атрибут data-film-live). Дублирует формулы
@@ -46,6 +49,8 @@ function buildMediaAvailability(): MediaAvailability {
 // dangerouslySetInnerHTML обёртки: React не рендерит сам <script>-элемент
 // (иначе dev-ворнинг), а браузер исполняет его из SSR-разметки при парсинге.
 const preHydration = `(function(){
+try{history.scrollRestoration='manual'}catch(_){}
+if(window.scrollY>0)window.scrollTo(0,0);
 var w=document.querySelector('[data-film-total]');if(!w)return;
 var rm=false;try{rm=matchMedia('(prefers-reduced-motion: reduce)').matches}catch(_){}
 function c(v){return Math.min(1,Math.max(0,v))}
