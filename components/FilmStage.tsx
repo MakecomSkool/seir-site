@@ -339,7 +339,9 @@ export default function FilmStage({ media }: { media?: MediaAvailability }) {
           video.preload = "auto";
           // iOS считает preload хинтом и без пинка не грузит ничего
           if (video.readyState === 0) video.load();
-        } else if (outFar && seg.mediaActive) {
+        } else if (outFar && seg.mediaActive && i !== shownIdx) {
+          // Видимый сегмент не выгружается никогда — иначе при огромном
+          // прыжке он мигнёт постером прежде, чем целевой будет готов
           seg.mediaActive = false;
           seg.pendingTime = null;
           video.preload = "none";
@@ -360,7 +362,14 @@ export default function FilmStage({ media }: { media?: MediaAvailability }) {
           // Мобильный гейт частоты: пропущенный проход доиграет следующий
           // rAF — цель пересчитывается каждый кадр, потерь позиции нет
           const now = performance.now();
-          if (mobileView && now - lastSeekStamp < MOBILE_SEEK_INTERVAL_MS) {
+          // Гейт обходится при неразрешённой подмене: цель должна получить
+          // сик немедленно, иначе 250мс-предохранитель показывает неготовый
+          // кадр («блымание» на сменах сегментов)
+          const gated =
+            mobileView &&
+            active === shownIdx &&
+            now - lastSeekStamp < MOBILE_SEEK_INTERVAL_MS;
+          if (gated) {
             // не выдаём новый сик; форсим пересчёт на следующем rAF, чтобы
             // финальная позиция не осталась недосикнутой после остановки
             lastPosVh = -1;
@@ -471,6 +480,24 @@ export default function FilmStage({ media }: { media?: MediaAvailability }) {
     let lastTime = -1;
     let lastScrollPx = window.scrollY;
 
+    // Возврат вкладки: браузер в фоне выгружает декодеры — сбрасываем
+    // скорость (гигантская пауза не должна попасть в dt), пинаем окно
+    // предзагрузки и форсим полный переапплай — иначе первые сики вязнут
+    // и скролл «тупит», пока всё не прогреется само
+    const onVisibility = () => {
+      if (document.visibilityState !== "visible") return;
+      lastTime = -1;
+      smoothVelocity = 0;
+      lastSeekStamp = 0;
+      lastPosVh = -1;
+      segments.forEach((seg) => {
+        if (seg.mediaActive && seg.video && seg.video.readyState === 0) {
+          seg.video.load();
+        }
+      });
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+
     const updateOverlays = () => {
       for (const node of overlays) {
         node.filmOverlayUpdate?.({ t: lastT, velocity: smoothVelocity });
@@ -545,6 +572,7 @@ export default function FilmStage({ media }: { media?: MediaAvailability }) {
       unsubscribeLead();
       wrap.removeAttribute("data-film-live");
       window.removeEventListener("resize", onResize);
+      document.removeEventListener("visibilitychange", onVisibility);
       cancelAnimationFrame(frame);
       lenisRef.current = null;
       lenis.destroy();
