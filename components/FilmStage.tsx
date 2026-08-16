@@ -474,10 +474,52 @@ export default function FilmStage({ media }: { media?: MediaAvailability }) {
           pendingSwitch = true;
           switchWaitAt = performance.now();
         }
-        // Прогрев цели: слой на opacity 0.01 (глазу невидим под полным
-        // старым... точнее НАД старым, но 1% неразличим) — композитор
-        // презентует его кадры, rVFC начинает тикать, устаревшая картинка
-        // слоя заменяется декодированной ещё ДО проявления
+        // Цель ещё ВИДИМА — реверс у границы в окно фейда (палец с
+        // syncTouch-сглаживанием осциллирует вокруг стыка постоянно).
+        // Прогревать её нельзя: запись opacity 0.01 на видимый слой
+        // дырявит непрозрачный стек, сквозь него блымает тёмная
+        // подложка. Слой уже на экране с данными — подмена мгновенна.
+        if (target.visible) {
+          const own = hideTimers.get(active);
+          if (own !== undefined) {
+            window.clearTimeout(own);
+            hideTimers.delete(active);
+          }
+          if (warmIdx >= 0 && warmIdx !== active && !hideTimers.has(warmIdx)) {
+            const w = segments[warmIdx];
+            w.visible = false;
+            w.el.style.visibility = "hidden";
+            w.el.style.opacity = "0";
+            w.el.style.zIndex = "";
+          }
+          warmIdx = -1;
+          const prev = segments[shownIdx];
+          if (prev !== target && prev.visible) {
+            prev.el.style.zIndex = "1";
+            const prevIdx = shownIdx;
+            const timer = window.setTimeout(() => {
+              hideTimers.delete(prevIdx);
+              if (shownIdx === prevIdx) return;
+              const seg = segments[prevIdx];
+              seg.visible = false;
+              seg.el.style.visibility = "hidden";
+              seg.el.style.opacity = "0";
+              seg.el.style.zIndex = "";
+            }, 560);
+            const old = hideTimers.get(prevIdx);
+            if (old !== undefined) window.clearTimeout(old);
+            hideTimers.set(prevIdx, timer);
+          }
+          target.el.style.zIndex = "2";
+          target.el.style.visibility = "visible";
+          target.el.style.opacity = "1";
+          shownIdx = active;
+          pendingSwitch = false;
+        } else {
+        // Прогрев цели: слой на opacity 0.01 (глазу невидим — 1% поверх
+        // полного старого неразличим) — композитор презентует его кадры,
+        // rVFC начинает тикать, устаревшая картинка слоя заменяется
+        // декодированной ещё ДО проявления
         if (warmIdx !== active) {
           if (warmIdx >= 0 && warmIdx !== shownIdx && !hideTimers.has(warmIdx)) {
             const w = segments[warmIdx];
@@ -550,6 +592,8 @@ export default function FilmStage({ media }: { media?: MediaAvailability }) {
           shownIdx = active;
           pendingSwitch = false;
           warmIdx = -1;
+        }
+        // конец ветки холодной цели (прогрев + готовность)
         }
       } else {
         pendingSwitch = false;
