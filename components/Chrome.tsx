@@ -131,6 +131,31 @@ export default function Chrome({
         </>
       )}
 
+      {/* Маленькая кнопка «на початок»: появляется, когда фильм уже идёт */}
+      {mode === "film" && (
+        <button
+          type="button"
+          onClick={() => onNavigate(sections[0].id)}
+          aria-label={CHROME.backToTop}
+          className={`chrome-shadow fixed bottom-5 left-4 z-40 flex h-9 w-9 items-center justify-center rounded-full border border-[var(--chrome-dim)] text-[var(--chrome-ink)] transition-all duration-500 hover:border-[var(--chrome-ink)] md:left-6 ${
+            state.progress > 0.03
+              ? "cursor-pointer opacity-60 hover:opacity-100"
+              : "pointer-events-none opacity-0"
+          }`}
+        >
+          <svg viewBox="0 0 16 16" width="12" height="12" aria-hidden>
+            <path
+              d="M3 10 L8 5 L13 10"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.6"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </button>
+      )}
+
       {/* Полупрозрачная подсказка скролла: появляется после лоадера
           (html.film-ready), гаснет после первых 60px скролла */}
       {mode === "film" && (

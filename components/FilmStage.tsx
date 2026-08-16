@@ -362,11 +362,15 @@ export default function FilmStage({ media }: { media?: MediaAvailability }) {
           }
         } else if (i === active) {
           seg.pendingTime = null;
-          seekTo(seg, t - seg.span.tStart, activeStep);
+          // videoFrom: сегмент скраббится от смещения до конца — открытие
+          // фильма с эффектного кадра (только первый сегмент)
+          const from = seg.span.videoFrom ?? 0;
+          const lp = (t - seg.span.tStart) / seg.span.duration;
+          seekTo(seg, from + lp * (seg.span.duration - from), activeStep);
         } else {
           // Соседи паркуются на своём граничном кадре: подмена на границе
           // мгновенно показывает совпадающий кадр, без ожидания сика
-          seekTo(seg, i < active ? seg.span.duration : 0);
+          seekTo(seg, i < active ? seg.span.duration : (seg.span.videoFrom ?? 0));
         }
       }
 
