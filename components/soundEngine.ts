@@ -17,10 +17,8 @@ export class FilmSound {
   private enabled = true;
   private lastWhooshAt = 0;
   private whooshIdx = 0;
-  // Голос: сыгранные разделы, текущий источник, отложенный до буфера/жеста
-  private voiceSrcBySection = new Map(
-    SOUND.voice.map((v) => [v.section as string, v.src]),
-  );
+  // Голос: сыгранные реплики, текущий источник, отложенный до буфера/жеста
+  private voiceSrcById = new Map(SOUND.voice.map((v) => [v.id, v.src]));
   private voPlayed = new Set<string>();
   private voCurrent: AudioBufferSourceNode | null = null;
   private pendingVoice: string | null = null;
@@ -51,7 +49,7 @@ export class FilmSound {
     this.bedsBus.connect(this.master);
     for (const bed of this.allBeds) this.load(bed.src);
     for (const src of SOUND.whooshes) this.load(src);
-    for (const src of this.voiceSrcBySection.values()) this.load(src);
+    for (const src of this.voiceSrcById.values()) this.load(src);
   }
 
   private load(src: string) {
@@ -107,9 +105,9 @@ export class FilmSound {
     if (this.pendingVoice) this.voice(this.pendingVoice);
   }
 
-  // Презентационная реплика раздела: один раз за сессию, фон приглушается
+  // Презентационная реплика: один раз за сессию, фон приглушается
   voice(section: string) {
-    const src = this.voiceSrcBySection.get(section);
+    const src = this.voiceSrcById.get(section);
     if (!src || this.voPlayed.has(section)) {
       if (this.pendingVoice === section) this.pendingVoice = null;
       return;
