@@ -323,9 +323,18 @@ export const SOUND = {
     { id: "mech", src: "/audio/amb_machines.mp3", fromT: 24, toT: 40, gain: 0.28 },
     { id: "hum", src: "/audio/hum_transformer.mp3", fromT: 43, toT: 70, gain: 0.32 },
   ] as SoundBed[],
-  // Музыкальная подложка на весь фильм: электронный хард-рок в духе
-  // Deep Purple — орган, синтовый риф, быстрые барабаны (Eleven Music)
-  music: { src: "/audio/music_bed.mp3", gain: 0.42 },
+  // Музыкальная партитура (Suno, один трек, нарезанный по границам
+  // актов): каждый кусок — луп со своим окном таймлайна, кроссфейды
+  // движка попадают в смену акта и в скрабе, и в автопросмотре.
+  // Украинский вокал трека — часть озвучки (хуки), диктор поверх.
+  music: [
+    { id: "m1", src: "/audio/music_s1.mp3", fromT: -3, toT: 24, gain: 0.45 },
+    { id: "m2", src: "/audio/music_s2.mp3", fromT: 24, toT: 40, gain: 0.45 },
+    { id: "m3", src: "/audio/music_s3.mp3", fromT: 40, toT: 72, gain: 0.45 },
+    { id: "m4", src: "/audio/music_s4.mp3", fromT: 72, toT: 112, gain: 0.45 },
+    { id: "m5", src: "/audio/music_s5.mp3", fromT: 112, toT: 139, gain: 0.45 },
+    { id: "m6", src: "/audio/music_s6.mp3", fromT: 139, toT: 158, gain: 0.45 },
+  ] as SoundBed[],
   // Вжухи пролётов на сменах сегментов (громкость и питч от скорости)
   whooshes: [
     "/audio/whoosh_a.mp3",
