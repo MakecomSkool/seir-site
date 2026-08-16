@@ -48,7 +48,11 @@ export default function SiteSections() {
           tabIndex={0}
           role="region"
           aria-label={SECTIONS.catalog.title}
+          // data-lenis-prevent: Lenis (особенно syncTouch на мобиле) не
+          // перехватывает жесты внутри — горизонтальный пан ленты нативный
+          data-lenis-prevent=""
           className="mt-12 flex snap-x gap-5 overflow-x-auto pb-6 focus-visible:outline focus-visible:outline-1 focus-visible:outline-[var(--gold)]"
+          style={{ touchAction: "pan-x", overscrollBehaviorX: "contain" }}
         >
           <div aria-hidden className="w-1 shrink-0 md:w-[calc(8vw-1.25rem)]" />
           {CATALOG.map((item) => (
