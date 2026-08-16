@@ -41,6 +41,9 @@ export default function Segment({ segment, index, avail, mobile = false }: Props
         background: PALETTES[segment.palette],
         visibility: index === 0 ? "visible" : "hidden",
         opacity: index === 0 ? 1 : 0,
+        // Микро-кроссфейд подмены: на совпадающих кадрах цепи невидим,
+        // микро-расхождения дублей и редкие неготовые кадры растворяет
+        transition: "opacity 140ms linear",
       }}
     >
       {/* Видео поверх градиента-подложки; пока файла нет — остаётся градиент,

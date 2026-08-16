@@ -230,6 +230,7 @@ export default function FilmStage({ media }: { media?: MediaAvailability }) {
     let shownIdx = 0;
     let switchWaitAt = 0;
     let pendingSwitch = false;
+    const hideTimers = new Map<number, number>();
     let lastCatsAt = -1;
     // Видео догрузилось при неподвижном скролле — ранний выход applyScroll
     // оставил бы его на нулевом кадре; сбрасываем кэш позиции.
@@ -412,12 +413,30 @@ export default function FilmStage({ media }: { media?: MediaAvailability }) {
           switchWaitAt = performance.now();
         }
         if (frameReady || performance.now() - switchWaitAt > 250) {
+          // Кроссфейд: новый сегмент наплывает за 140мс (transition в
+          // Segment), старый гаснет и прячется по завершении — visibility
+          // сразу срезала бы transition и вернула бы жёсткий блинк
           segments.forEach((seg, i) => {
             const on = i === active;
-            if (on !== seg.visible) {
-              seg.visible = on;
-              seg.el.style.visibility = on ? "visible" : "hidden";
-              seg.el.style.opacity = on ? "1" : "0";
+            if (on) {
+              const timer = hideTimers.get(i);
+              if (timer !== undefined) {
+                window.clearTimeout(timer);
+                hideTimers.delete(i);
+              }
+              if (!seg.visible) {
+                seg.visible = true;
+                seg.el.style.visibility = "visible";
+                seg.el.style.opacity = "1";
+              }
+            } else if (seg.visible) {
+              seg.visible = false;
+              seg.el.style.opacity = "0";
+              const timer = window.setTimeout(() => {
+                hideTimers.delete(i);
+                if (!seg.visible) seg.el.style.visibility = "hidden";
+              }, 200);
+              hideTimers.set(i, timer);
             }
           });
           shownIdx = active;
@@ -574,6 +593,8 @@ export default function FilmStage({ media }: { media?: MediaAvailability }) {
       window.removeEventListener("resize", onResize);
       document.removeEventListener("visibilitychange", onVisibility);
       cancelAnimationFrame(frame);
+      hideTimers.forEach((timer) => window.clearTimeout(timer));
+      hideTimers.clear();
       lenisRef.current = null;
       lenis.destroy();
       segments.forEach((seg, index) => {
