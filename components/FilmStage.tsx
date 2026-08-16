@@ -221,7 +221,12 @@ export default function FilmStage({ media }: { media?: MediaAvailability }) {
     window.addEventListener("resize", onResize);
 
     let lastPosVh = -1;
-    let lastActive = -1;
+    // Отложенная подмена: реально видимый сегмент может отставать от
+    // активного, пока целевой кадр не декодирован — иначе на быстром
+    // скролле мелькают запаркованные кадры и постеры («вспышки»)
+    let shownIdx = 0;
+    let switchWaitAt = 0;
+    let pendingSwitch = false;
     let lastCatsAt = -1;
     // Видео догрузилось при неподвижном скролле — ранний выход applyScroll
     // оставил бы его на нулевом кадре; сбрасываем кэш позиции.
@@ -296,19 +301,6 @@ export default function FilmStage({ media }: { media?: MediaAvailability }) {
       }
       lastT = t;
 
-      // Жёсткая подмена сегментов на общем кадре: видимость без переходов
-      if (active !== lastActive) {
-        segments.forEach((seg, i) => {
-          const on = i === active;
-          if (on !== seg.visible) {
-            seg.visible = on;
-            seg.el.style.visibility = on ? "visible" : "hidden";
-            seg.el.style.opacity = on ? "1" : "0";
-          }
-        });
-        lastActive = active;
-      }
-
       // Шаг сика по скорости: на быстром скролле квантуем крупнее —
       // движение в кадре и так огромное, а декодов на кадр меньше
       const speed = Math.abs(smoothVelocity);
@@ -372,6 +364,44 @@ export default function FilmStage({ media }: { media?: MediaAvailability }) {
           // мгновенно показывает совпадающий кадр, без ожидания сика
           seekTo(seg, i < active ? seg.span.duration : (seg.span.videoFrom ?? 0));
         }
+      }
+
+      // Отложенная подмена видимости: целевой сегмент уже получил сик выше;
+      // показываем его, когда нужный кадр декодирован (последовательный
+      // проход границы готов сразу — кадры совпадают), при прыжке ждём
+      // 1-2 кадра, удерживая предыдущий сегмент. Предохранитель 250 мс:
+      // медленная сеть не должна замораживать ленту на старом кадре.
+      if (active !== shownIdx) {
+        const target = segments[active];
+        const tv = target.video;
+        const from = target.span.videoFrom ?? 0;
+        const wantTime =
+          from +
+          ((t - target.span.tStart) / target.span.duration) *
+            (target.span.duration - from);
+        const frameReady =
+          !tv ||
+          (tv.readyState >= 2 &&
+            !tv.seeking &&
+            Math.abs(tv.currentTime - wantTime) < 0.4);
+        if (!pendingSwitch) {
+          pendingSwitch = true;
+          switchWaitAt = performance.now();
+        }
+        if (frameReady || performance.now() - switchWaitAt > 250) {
+          segments.forEach((seg, i) => {
+            const on = i === active;
+            if (on !== seg.visible) {
+              seg.visible = on;
+              seg.el.style.visibility = on ? "visible" : "hidden";
+              seg.el.style.opacity = on ? "1" : "0";
+            }
+          });
+          shownIdx = active;
+          pendingSwitch = false;
+        }
+      } else {
+        pendingSwitch = false;
       }
 
       // CAT-тег: cats активного сегмента, пуш только при смене
@@ -480,6 +510,9 @@ export default function FilmStage({ media }: { media?: MediaAvailability }) {
           lastActiveStep = FRAME_STEP;
           lastPosVh = -1;
         }
+        // Неразрешённая подмена: перепроверяем готовность целевого кадра
+        // каждый кадр, даже если скролл уже остановился
+        if (pendingSwitch) lastPosVh = -1;
       }
       lastTime = time;
       lastScrollPx = window.scrollY;
