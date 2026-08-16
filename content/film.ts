@@ -125,6 +125,9 @@ export const CHROME = {
   backToTop: "На початок",
   // Кнопка автопросмотра на первом экране
   play: "дивитись фільм",
+  // Тумблер звукового слоя (aria)
+  soundOn: "Звук увімкнено",
+  soundOff: "Звук вимкнено",
   // aria-подпись тега CAT; клик ведёт к ленте каталога
   catalog: "До каталогу обладнання",
   scrollHint: "прокрутіть",
@@ -287,6 +290,37 @@ export const FILM_SECTIONS: FilmSection[] = [
   { id: "quality", title: "Якість", fromT: 112 },
   { id: "epilogue", title: "Взаємодія", fromT: 139 },
 ];
+
+// Звуковой слой фильма: эмбиенты по разделам таймлайна (переливаются
+// на границах), гул трансформатора поверх ангара, вжухи пролётов на
+// сменах сегментов с громкостью от скорости скролла. Движок:
+// components/soundEngine.ts. Пути и тайминги правятся только здесь.
+export type SoundBed = {
+  id: string;
+  src: string;
+  fromT: number;
+  toT: number;
+  gain: number;
+};
+export const SOUND = {
+  masterGain: 0.55,
+  // Секунды таймлайна на переливание слоёв (скат центрируется на границе)
+  crossfadeT: 3,
+  beds: [
+    { id: "orbit", src: "/audio/amb_orbit.mp3", fromT: -3, toT: 24, gain: 0.9 },
+    { id: "steel", src: "/audio/amb_steel.mp3", fromT: 24, toT: 40, gain: 0.75 },
+    { id: "hangar", src: "/audio/amb_hangar.mp3", fromT: 40, toT: 72, gain: 0.85 },
+    { id: "dawn", src: "/audio/amb_dawn.mp3", fromT: 72, toT: 112, gain: 0.75 },
+    { id: "bright", src: "/audio/amb_bright.mp3", fromT: 112, toT: 139, gain: 0.65 },
+    { id: "orbitEnd", src: "/audio/amb_orbit.mp3", fromT: 139, toT: 158, gain: 0.9 },
+  ] as SoundBed[],
+  extras: [
+    { id: "hum", src: "/audio/hum_transformer.mp3", fromT: 43, toT: 70, gain: 0.32 },
+  ] as SoundBed[],
+  whooshes: ["/audio/whoosh_a.mp3", "/audio/whoosh_b.mp3", "/audio/whoosh_c.mp3"],
+  whooshGain: 0.5,
+  whooshCooldownMs: 450,
+};
 
 // Титры фаз идут поверх движения, в моменты тихого заполнения проёма
 // (облако, тёмные ворота, шахта люка, белая хмара, поворот к окну).

@@ -8,6 +8,7 @@ import Chrome, { type ChromeState } from "@/components/Chrome";
 import PhaseBar from "@/components/PhaseBar";
 import Segment from "@/components/Segment";
 import TimedCopy, { CopyBlockView } from "@/components/TimedCopy";
+import { FilmSound } from "@/components/soundEngine";
 import { openLeadPanel, subscribeLeadPanel } from "@/components/leadBus";
 import type {
   CatTagNode,
@@ -107,6 +108,12 @@ export default function FilmStage({ media }: { media?: MediaAvailability }) {
   const playStateRef = useRef(playState);
   playStateRef.current = playState;
   const autoplayRef = useRef<{ start: () => void } | null>(null);
+  // Звуковой слой: контекст создаётся после первого жеста, тумблер
+  // в левой колонке хрома
+  const soundRef = useRef<FilmSound | null>(null);
+  const [soundOn, setSoundOn] = useState(true);
+  const soundOnRef = useRef(soundOn);
+  soundOnRef.current = soundOn;
 
   const activeSegments: SegmentConfig[] = useMemo(
     () =>
@@ -232,6 +239,20 @@ export default function FilmStage({ media }: { media?: MediaAvailability }) {
 
     // Сигнал пре-гидрационному скрипту снять свой одноразовый scroll-слушатель.
     wrap.setAttribute("data-film-live", "1");
+
+    // Звук: контекст можно создать только внутри жеста пользователя.
+    // Одноразовые слушатели снимаются после первой разблокировки.
+    const sound = new FilmSound();
+    soundRef.current = sound;
+    sound.setEnabled(soundOnRef.current);
+    const gestureEvents = ["pointerdown", "touchstart", "keydown", "wheel"] as const;
+    const onFirstGesture = () => {
+      sound.unlock();
+      gestureEvents.forEach((ev) => window.removeEventListener(ev, onFirstGesture));
+    };
+    gestureEvents.forEach((ev) =>
+      window.addEventListener(ev, onFirstGesture, { passive: true }),
+    );
 
     // px в одном vh скраббируемой дистанции: спейсер минус вьюпорт (последний
     // вьюпорт — покой на финальном кадре). Меряем по DOM, не по innerHeight,
@@ -515,6 +536,7 @@ export default function FilmStage({ media }: { media?: MediaAvailability }) {
           target.el.style.opacity = "1";
           shownIdx = active;
           pendingSwitch = false;
+          sound.junction(smoothVelocity);
         } else {
         // Прогрев цели: слой на opacity 0.01 (глазу невидим — 1% поверх
         // полного старого неразличим) — композитор презентует его кадры,
@@ -600,6 +622,7 @@ export default function FilmStage({ media }: { media?: MediaAvailability }) {
           shownIdx = active;
           pendingSwitch = false;
           warmIdx = -1;
+          sound.junction(smoothVelocity);
         }
         // конец ветки холодной цели (прогрев + готовность)
         }
@@ -686,10 +709,12 @@ export default function FilmStage({ media }: { media?: MediaAvailability }) {
       if (document.visibilityState !== "visible") {
         // Уход в фон при автопросмотре: rAF замирает, а часы Lenis нет —
         // после возврата твин прыгнул бы вперёд на всё скрытое время
-        // (в холодные сегменты). Останавливаем на месте.
+        // (в холодные сегменты). Останавливаем на месте. Звук — на паузу.
         cancelAutoplay();
+        sound.suspend();
         return;
       }
+      sound.resume();
       lastTime = -1;
       smoothVelocity = 0;
       lastSeekStamp = 0;
@@ -830,6 +855,7 @@ export default function FilmStage({ media }: { media?: MediaAvailability }) {
       applyScroll();
       // Оверлеи обновляются каждый кадр, вне раннего выхода applyScroll
       updateOverlays();
+      sound.update(lastT);
       frame = requestAnimationFrame(update);
     };
     applyScroll();
@@ -845,6 +871,11 @@ export default function FilmStage({ media }: { media?: MediaAvailability }) {
       window.removeEventListener("resize", onResize);
       window.removeEventListener("pageshow", onPageShow);
       document.removeEventListener("visibilitychange", onVisibility);
+      gestureEvents.forEach((ev) =>
+        window.removeEventListener(ev, onFirstGesture),
+      );
+      soundRef.current = null;
+      sound.dispose();
       cancelAnimationFrame(frame);
       hideTimers.forEach((timer) => window.clearTimeout(timer));
       hideTimers.clear();
@@ -951,6 +982,44 @@ export default function FilmStage({ media }: { media?: MediaAvailability }) {
         onNavigate={navigate}
         register={registerChrome}
       />
+      {/* Тумблер звука: под кнопкой «На початок» в левой колонке хрома.
+          Клик — жест, поэтому заодно разблокирует аудиоконтекст */}
+      <button
+        type="button"
+        aria-label={soundOn ? CHROME.soundOn : CHROME.soundOff}
+        onClick={() => {
+          const next = !soundOn;
+          setSoundOn(next);
+          soundRef.current?.setEnabled(next);
+          if (next) soundRef.current?.unlock();
+        }}
+        className="chrome-shadow fixed left-4 top-24 z-40 flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-[var(--chrome-dim)] text-[var(--chrome-ink)] opacity-60 transition-all duration-500 hover:opacity-100 md:left-6 md:top-[6.5rem]"
+      >
+        <svg viewBox="0 0 16 16" width="12" height="12" aria-hidden>
+          <path
+            d="M3 6 L3 10 L6 10 L9 13 L9 3 L6 6 Z"
+            fill="currentColor"
+            stroke="none"
+          />
+          {soundOn ? (
+            <path
+              d="M11 6 Q12.6 8 11 10"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.3"
+              strokeLinecap="round"
+            />
+          ) : (
+            <path
+              d="M11 6 L14 10 M14 6 L11 10"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.3"
+              strokeLinecap="round"
+            />
+          )}
+        </svg>
+      </button>
       {/* Кнопка Play первого экрана: автопросмотр фильма в реальном темпе.
           Ручной скролл или любой жест во время проигрывания убирает её. */}
       {playState === "idle" && (
