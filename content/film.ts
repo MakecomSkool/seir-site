@@ -323,9 +323,9 @@ export const SOUND = {
     { id: "mech", src: "/audio/amb_machines.mp3", fromT: 24, toT: 40, gain: 0.28 },
     { id: "hum", src: "/audio/hum_transformer.mp3", fromT: 43, toT: 70, gain: 0.32 },
   ] as SoundBed[],
-  // Музыкальная подложка на весь фильм: украинский характер — бандура,
-  // сопилка, тёплый струнный дрон (Eleven Music)
-  music: { src: "/audio/music_bed.mp3", gain: 0.32 },
+  // Музыкальная подложка на весь фильм: энергичный рекламный
+  // корпоративный трек с чёткими переходами (Eleven Music)
+  music: { src: "/audio/music_bed.mp3", gain: 0.42 },
   // Вжухи пролётов на сменах сегментов (громкость и питч от скорости)
   whooshes: [
     "/audio/whoosh_a.mp3",
