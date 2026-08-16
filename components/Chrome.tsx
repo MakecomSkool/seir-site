@@ -131,13 +131,15 @@ export default function Chrome({
         </>
       )}
 
-      {/* Маленькая кнопка «на початок»: появляется, когда фильм уже идёт */}
+      {/* Маленькая кнопка «на початок»: появляется, когда фильм уже идёт.
+          Верхний левый угол под шапкой: низ занят текстовыми плашками
+          мобилки (9vh от раскладочного низа уезжает под адресную строку) */}
       {mode === "film" && (
         <button
           type="button"
           onClick={() => onNavigate(sections[0].id)}
           aria-label={CHROME.backToTop}
-          className={`chrome-shadow fixed bottom-5 left-4 z-40 flex h-9 w-9 items-center justify-center rounded-full border border-[var(--chrome-dim)] text-[var(--chrome-ink)] transition-all duration-500 hover:border-[var(--chrome-ink)] md:left-6 ${
+          className={`chrome-shadow fixed left-4 top-14 z-40 flex h-9 w-9 items-center justify-center rounded-full border border-[var(--chrome-dim)] text-[var(--chrome-ink)] transition-all duration-500 hover:border-[var(--chrome-ink)] md:left-6 md:top-16 ${
             state.progress > 0.03
               ? "cursor-pointer opacity-60 hover:opacity-100"
               : "pointer-events-none opacity-0"
@@ -170,9 +172,16 @@ export default function Chrome({
         </div>
       )}
 
-      {/* Поверх всего: зерно остаётся в светлой части, виньетка выключается (CSS) */}
+      {/* Поверх всего: зерно остаётся в светлой части, виньетка выключается
+          в белом акте (CSS) и в секциях после фильма — тёмная рамка поверх
+          подвала читается как посторонний слой */}
       <div aria-hidden className="grain pointer-events-none fixed inset-0 z-50" />
-      <div aria-hidden className="vig pointer-events-none fixed inset-0 z-50" />
+      <div
+        aria-hidden
+        className={`vig pointer-events-none fixed inset-0 z-50 ${
+          mode === "film" && state.progress >= 0.999 ? "vig-off" : ""
+        }`}
+      />
     </div>
   );
 }

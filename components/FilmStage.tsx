@@ -695,6 +695,18 @@ export default function FilmStage({ media }: { media?: MediaAvailability }) {
     };
     document.addEventListener("visibilitychange", onVisibility);
 
+    // Возврат на страницу из bfcache: фильм начинается сверху, кнопка
+    // Play возвращается — страница ведёт себя как свежеоткрытая
+    const onPageShow = (event: PageTransitionEvent) => {
+      if (!event.persisted) return;
+      window.scrollTo(0, 0);
+      lenis.scrollTo(0, { immediate: true });
+      lastPosVh = -1;
+      playStateRef.current = "idle";
+      setPlayState("idle");
+    };
+    window.addEventListener("pageshow", onPageShow);
+
     const updateOverlays = () => {
       for (const node of overlays) {
         node.filmOverlayUpdate?.({ t: lastT, velocity: smoothVelocity });
@@ -823,6 +835,7 @@ export default function FilmStage({ media }: { media?: MediaAvailability }) {
       autoplayRef.current = null;
       wrap.removeAttribute("data-film-live");
       window.removeEventListener("resize", onResize);
+      window.removeEventListener("pageshow", onPageShow);
       document.removeEventListener("visibilitychange", onVisibility);
       cancelAnimationFrame(frame);
       hideTimers.forEach((timer) => window.clearTimeout(timer));
