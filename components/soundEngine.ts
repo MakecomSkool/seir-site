@@ -23,11 +23,11 @@ export class FilmSound {
   private voCurrent: AudioBufferSourceNode | null = null;
   private pendingVoice: string | null = null;
 
-  // Музыка — обычный слой с окном во весь фильм
+  // Музыкальные куски — те же слои с окнами по актам, что и эмбиенты
   private allBeds: SoundBed[] = [
     ...SOUND.beds,
     ...SOUND.extras,
-    { id: "music", src: SOUND.music.src, fromT: -999, toT: 999, gain: SOUND.music.gain },
+    ...SOUND.music,
   ];
 
   unlock() {
