@@ -71,6 +71,16 @@ body {
 html.film-ready [data-scroll-hint] {
   opacity: 0.55;
 }
+/* Кнопка Play первого экрана: как и подсказка, проявляется после лоадера */
+[data-play-button] {
+  opacity: 0;
+  transition: opacity 0.8s;
+  pointer-events: none;
+}
+html.film-ready [data-play-button] {
+  opacity: 1;
+  pointer-events: auto;
+}
 html.film-ready .chrome-scrolled [data-scroll-hint] {
   opacity: 0;
 }
