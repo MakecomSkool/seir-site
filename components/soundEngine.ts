@@ -149,6 +149,13 @@ export class FilmSound {
     this.voCurrent = node;
   }
 
+  // Остановка голоса: ручной скролл прерывает презентацию (реплики
+  // играют только в режиме автопросмотра). onended вернёт дакинг.
+  stopVoice() {
+    this.pendingVoice = null;
+    this.voCurrent?.stop();
+  }
+
   // Вжух пролёта на смене сегмента: выключен пустым списком в конфиге
   junction(velocity: number) {
     if (!SOUND.whooshes.length) return;

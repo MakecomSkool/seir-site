@@ -670,9 +670,11 @@ export default function FilmStage({ media }: { media?: MediaAvailability }) {
           break;
         }
       }
+      // Голос — только в автопросмотре: ручной скроллер сам управляет
+      // темпом, навязанная реплика диссонирует с его позицией
       if (sectionIndex !== lastVoiceSection) {
         lastVoiceSection = sectionIndex;
-        sound.voice(FILM_SECTIONS[sectionIndex].id);
+        if (autoplayActive) sound.voice(FILM_SECTIONS[sectionIndex].id);
       }
       // Ручной скролл без нажатия Play прячет кнопку навсегда (мутация
       // ref до setState — защита от повторных вызовов из rAF до ре-рендера)
@@ -794,7 +796,9 @@ export default function FilmStage({ media }: { media?: MediaAvailability }) {
       autoplayActive = false;
       removeCancelListeners();
       // Остановка на месте: scrollTo текущей позиции с immediate обрывает
-      // внутренний твин Lenis, инерции нет — рука подхватывает мгновенно
+      // внутренний твин Lenis, инерции нет — рука подхватывает мгновенно.
+      // Голос замолкает: дальше темпом управляет рука
+      sound.stopVoice();
       lenis.scrollTo(window.scrollY, { immediate: true });
       playStateRef.current = "gone";
       setPlayState("gone");
@@ -816,6 +820,10 @@ export default function FilmStage({ media }: { media?: MediaAvailability }) {
         autoplayActive = true;
         playStateRef.current = "playing";
         setPlayState("playing");
+        // Клик — жест: контекст разблокируется, реплика текущего раздела
+        // стартует сразу (смены раздела для первого ещё не будет)
+        sound.unlock();
+        sound.voice(FILM_SECTIONS[uiRef.current.section].id);
         window.addEventListener("wheel", onUserGesture, { passive: true });
         window.addEventListener("touchstart", onUserGesture, { passive: true });
         window.addEventListener("mousedown", onUserGesture);
