@@ -62,7 +62,12 @@ export default function Segment({ segment, index, avail, mobile = false }: Props
           playsInline
           preload="none"
           suppressHydrationWarning
-          poster={hasPoster ? segment.posterSrc : undefined}
+          // Постер ТОЛЬКО у первого сегмента (первый кадр до старта).
+          // У остальных постер показывался бы единственным способом —
+          // артефактом: холодный сегмент, не успевший отрисовать кадр,
+          // вплывал в подмену статичным «фото» поверх сцены (на мобиле —
+          // вообще десктопным 16:9 кадром другой съёмки)
+          poster={index === 0 && hasPoster ? segment.posterSrc : undefined}
           className="absolute inset-0 h-full w-full object-cover"
         >
           <source src={src} type="video/mp4" />
