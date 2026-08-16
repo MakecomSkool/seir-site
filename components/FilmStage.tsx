@@ -16,6 +16,7 @@ import type {
 } from "@/components/overlayBridge";
 import { PHASES } from "@/content/catalog";
 import {
+  CHROME,
   COPY,
   FILM_SECTIONS,
   IOS_AUTOPLAY_FALLBACK,
@@ -93,6 +94,14 @@ export default function FilmStage({ media }: { media?: MediaAvailability }) {
   // Мобильная ветка (oneshot.md, раздел 9): темп ×0.8 — скролл «длиннее»
   // на палец; тексты в плашке, шкала полоской, свои 9:16 файлы.
   const [mobileView, setMobileView] = useState(false);
+  // Кнопка Play на первом экране: запускает плавный автопросмотр всего
+  // фильма в реальном темпе; любой жест пользователя отменяет и прячет её
+  const [playState, setPlayState] = useState<"idle" | "playing" | "gone">(
+    "idle",
+  );
+  const playStateRef = useRef(playState);
+  playStateRef.current = playState;
+  const autoplayRef = useRef<{ start: () => void } | null>(null);
 
   const activeSegments: SegmentConfig[] = useMemo(
     () =>
@@ -413,32 +422,36 @@ export default function FilmStage({ media }: { media?: MediaAvailability }) {
           switchWaitAt = performance.now();
         }
         if (frameReady || performance.now() - switchWaitAt > 250) {
-          // Кроссфейд: новый сегмент наплывает за 140мс (transition в
-          // Segment), старый гаснет и прячется по завершении — visibility
-          // сразу срезала бы transition и вернула бы жёсткий блинк
-          segments.forEach((seg, i) => {
-            const on = i === active;
-            if (on) {
-              const timer = hideTimers.get(i);
-              if (timer !== undefined) {
-                window.clearTimeout(timer);
-                hideTimers.delete(i);
-              }
-              if (!seg.visible) {
-                seg.visible = true;
-                seg.el.style.visibility = "visible";
-                seg.el.style.opacity = "1";
-              }
-            } else if (seg.visible) {
+          // Кроссфейд БЕЗ провала яркости: новый сегмент наплывает ПОВЕРХ
+          // (z-index выше), старый держит полную непрозрачность до конца
+          // фейда — одновременное гашение обоих слоёв просвечивало бы
+          // тёмную подложку («блымание»). Старый прячется по таймеру.
+          const prev = segments[shownIdx];
+          if (prev !== target && prev.visible) {
+            prev.el.style.zIndex = "1";
+            const prevIdx = shownIdx;
+            const timer = window.setTimeout(() => {
+              hideTimers.delete(prevIdx);
+              if (shownIdx === prevIdx) return; // успел снова стать активным
+              const seg = segments[prevIdx];
               seg.visible = false;
+              seg.el.style.visibility = "hidden";
               seg.el.style.opacity = "0";
-              const timer = window.setTimeout(() => {
-                hideTimers.delete(i);
-                if (!seg.visible) seg.el.style.visibility = "hidden";
-              }, 200);
-              hideTimers.set(i, timer);
-            }
-          });
+              seg.el.style.zIndex = "";
+            }, 220);
+            const old = hideTimers.get(prevIdx);
+            if (old !== undefined) window.clearTimeout(old);
+            hideTimers.set(prevIdx, timer);
+          }
+          const own = hideTimers.get(active);
+          if (own !== undefined) {
+            window.clearTimeout(own);
+            hideTimers.delete(active);
+          }
+          target.el.style.zIndex = "2";
+          target.el.style.visibility = "visible";
+          target.el.style.opacity = "1";
+          target.visible = true;
           shownIdx = active;
           pendingSwitch = false;
         }
@@ -473,6 +486,13 @@ export default function FilmStage({ media }: { media?: MediaAvailability }) {
           break;
         }
       }
+      // Ручной скролл без нажатия Play прячет кнопку навсегда (мутация
+      // ref до setState — защита от повторных вызовов из rAF до ре-рендера)
+      if (playStateRef.current === "idle" && window.scrollY > SCROLL_HINT_PX) {
+        playStateRef.current = "gone";
+        setPlayState("gone");
+      }
+
       const next: ChromeState = {
         section: sectionIndex,
         light:
@@ -554,6 +574,57 @@ export default function FilmStage({ media }: { media?: MediaAvailability }) {
       if (open) lenis.stop();
       else lenis.start();
     });
+
+    // Кнопка Play: скроллит фильм до конца в реальном темпе таймлайна
+    // (остаток секунд = длительность прокрутки, easing linear — темп задаёт
+    // таблица vh/с через кусочно-линейный маппинг). Любой жест пользователя
+    // отменяет автопросмотр и передаёт управление руке.
+    let autoplayActive = false;
+    const cancelAutoplay = () => {
+      if (!autoplayActive) return;
+      autoplayActive = false;
+      removeCancelListeners();
+      // Остановка на месте: scrollTo текущей позиции с immediate обрывает
+      // внутренний твин Lenis, инерции нет — рука подхватывает мгновенно
+      lenis.scrollTo(window.scrollY, { immediate: true });
+      playStateRef.current = "gone";
+      setPlayState("gone");
+    };
+    const onUserGesture = (event: Event) => {
+      const target = event.target as HTMLElement | null;
+      if (target?.closest?.("[data-play-button]")) return;
+      cancelAutoplay();
+    };
+    const removeCancelListeners = () => {
+      window.removeEventListener("wheel", onUserGesture);
+      window.removeEventListener("touchstart", onUserGesture);
+      window.removeEventListener("mousedown", onUserGesture);
+      window.removeEventListener("keydown", onUserGesture);
+    };
+    autoplayRef.current = {
+      start: () => {
+        if (autoplayActive) return;
+        autoplayActive = true;
+        playStateRef.current = "playing";
+        setPlayState("playing");
+        window.addEventListener("wheel", onUserGesture, { passive: true });
+        window.addEventListener("touchstart", onUserGesture, { passive: true });
+        window.addEventListener("mousedown", onUserGesture);
+        window.addEventListener("keydown", onUserGesture);
+        const maxScroll = wrap.offsetHeight - stage.offsetHeight;
+        lenis.scrollTo(maxScroll, {
+          duration: Math.max(2, totalT - lastT),
+          easing: (x: number) => x,
+          onComplete: () => {
+            if (!autoplayActive) return;
+            autoplayActive = false;
+            removeCancelListeners();
+            playStateRef.current = "gone";
+            setPlayState("gone");
+          },
+        });
+      },
+    };
     let frame = 0;
     const update = (time: number) => {
       lenis.raf(time);
@@ -589,6 +660,9 @@ export default function FilmStage({ media }: { media?: MediaAvailability }) {
 
     return () => {
       unsubscribeLead();
+      autoplayActive = false;
+      removeCancelListeners();
+      autoplayRef.current = null;
       wrap.removeAttribute("data-film-live");
       window.removeEventListener("resize", onResize);
       document.removeEventListener("visibilitychange", onVisibility);
@@ -695,6 +769,26 @@ export default function FilmStage({ media }: { media?: MediaAvailability }) {
         onNavigate={navigate}
         register={registerChrome}
       />
+      {/* Кнопка Play первого экрана: автопросмотр фильма в реальном темпе.
+          Ручной скролл или любой жест во время проигрывания убирает её. */}
+      {playState === "idle" && (
+        <button
+          type="button"
+          data-play-button=""
+          aria-label={CHROME.play}
+          onClick={() => autoplayRef.current?.start()}
+          className="fixed bottom-[88px] left-1/2 z-40 flex -translate-x-1/2 cursor-pointer flex-col items-center gap-3"
+        >
+          <span className="flex h-14 w-14 items-center justify-center rounded-full border border-[rgba(238,242,247,0.35)] bg-[rgba(2,3,10,0.35)] backdrop-blur-sm transition-[border-color,transform] duration-300 hover:scale-105 hover:border-[var(--gold)]">
+            <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden>
+              <path d="M5.2 3.2 12.4 8 5.2 12.8Z" fill="var(--ink)" />
+            </svg>
+          </span>
+          <span className="font-mono text-[9px] uppercase tracking-[0.3em] text-[var(--dim)]">
+            {CHROME.play}
+          </span>
+        </button>
+      )}
       {/* Клик по тегу ведёт к карточке показанного CAT-кода: лента
           доскролливается горизонтально, страница — к секции каталога */}
       <CatTag
