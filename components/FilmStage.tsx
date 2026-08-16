@@ -60,8 +60,14 @@ const FRAME_STEP = 1 / 24;
 // Стабильная плавность на любой скорости: чем быстрее скролл, тем крупнее
 // шаг квантизации сика — меньше декодов на кадр, главный поток не давится.
 // Пороги в px/s сглаженной скорости; на успокоении шаг возвращается к кадру.
-const FAST_SCROLL_PX_S = 1500;
-const VERY_FAST_SCROLL_PX_S = 3200;
+// У телефона пороги ниже (вьюпорт меньше, декодер слабее) и есть третья
+// ступень: на экстремальном свайпе видео обновляется 4 раза в секунду —
+// читается как ускоренная перемотка, а не борьба с декодером.
+const FAST_SCROLL_DESKTOP = 1500;
+const VERY_FAST_SCROLL_DESKTOP = 3200;
+const FAST_SCROLL_MOBILE = 800;
+const VERY_FAST_SCROLL_MOBILE = 1800;
+const EXTREME_SCROLL_MOBILE = 3200;
 
 // Тексты: появление/уход на [fromT, toT] — только opacity + translateY.
 const COPY_FADE_S = 0.5;
@@ -306,12 +312,16 @@ export default function FilmStage({ media }: { media?: MediaAvailability }) {
       // Шаг сика по скорости: на быстром скролле квантуем крупнее —
       // движение в кадре и так огромное, а декодов на кадр меньше
       const speed = Math.abs(smoothVelocity);
+      const fastT = mobileView ? FAST_SCROLL_MOBILE : FAST_SCROLL_DESKTOP;
+      const veryT = mobileView ? VERY_FAST_SCROLL_MOBILE : VERY_FAST_SCROLL_DESKTOP;
       const activeStep =
-        speed > VERY_FAST_SCROLL_PX_S
-          ? FRAME_STEP * 3
-          : speed > FAST_SCROLL_PX_S
-            ? FRAME_STEP * 2
-            : FRAME_STEP;
+        mobileView && speed > EXTREME_SCROLL_MOBILE
+          ? FRAME_STEP * 6
+          : speed > veryT
+            ? FRAME_STEP * 3
+            : speed > fastT
+              ? FRAME_STEP * 2
+              : FRAME_STEP;
       lastActiveStep = activeStep;
       const preloadBack = mobileView ? PRELOAD_BACK_MOBILE : PRELOAD_BACK_DESKTOP;
       const preloadAhead = mobileView ? PRELOAD_AHEAD_MOBILE : PRELOAD_AHEAD_DESKTOP;
@@ -323,12 +333,17 @@ export default function FilmStage({ media }: { media?: MediaAvailability }) {
         const video = seg.video;
         if (!video) continue;
         const inWindow = i >= active - preloadBack && i <= active + preloadAhead;
+        // Гистерезис выгрузки: освобождаем только на 2 сегмента ЗА окном —
+        // пролёт свайпом сквозь несколько сегментов не устраивает каскад
+        // load()/выгрузок на каждом пересечении границы
+        const outFar =
+          i < active - preloadBack - 2 || i > active + preloadAhead + 2;
         if (inWindow && !seg.mediaActive) {
           seg.mediaActive = true;
           video.preload = "auto";
           // iOS считает preload хинтом и без пинка не грузит ничего
           if (video.readyState === 0) video.load();
-        } else if (!inWindow && seg.mediaActive) {
+        } else if (outFar && seg.mediaActive) {
           seg.mediaActive = false;
           seg.pendingTime = null;
           video.preload = "none";
@@ -422,7 +437,21 @@ export default function FilmStage({ media }: { media?: MediaAvailability }) {
       }
     };
 
-    const lenis = new Lenis();
+    // Мобильный тач: syncTouch пропускает палец через lerp-сглаживание —
+    // нативные рывки momentum-скролла гасятся, приглушённый множитель и
+    // короткая инерция не дают свайпу «улетать» сквозь пол-фильма
+    const lenis = new Lenis(
+      mobileView
+        ? {
+            syncTouch: true,
+            syncTouchLerp: 0.09,
+            touchMultiplier: 0.9,
+            // <1.7 (дефолт): резкий флик не возводится в степень —
+            // инерция короче, свайп не улетает сквозь пол-фильма
+            touchInertiaExponent: 1.2,
+          }
+        : {},
+    );
     lenisRef.current = lenis;
     // Открытая панель заявки замораживает скролл фильма
     const unsubscribeLead = subscribeLeadPanel((open) => {
@@ -441,7 +470,8 @@ export default function FilmStage({ media }: { media?: MediaAvailability }) {
         // шагом, иначе покой остался бы на крупноквантованной позиции
         if (
           lastActiveStep > FRAME_STEP &&
-          Math.abs(smoothVelocity) <= FAST_SCROLL_PX_S
+          Math.abs(smoothVelocity) <=
+            (mobileView ? FAST_SCROLL_MOBILE : FAST_SCROLL_DESKTOP)
         ) {
           lastActiveStep = FRAME_STEP;
           lastPosVh = -1;
