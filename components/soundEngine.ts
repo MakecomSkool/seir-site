@@ -1,14 +1,15 @@
 import { SOUND, type SoundBed } from "@/content/film";
 
 // Звуковой слой фильма: WebAudio поверх rAF-цикла FilmStage. Эмбиент-слои
-// переливаются по глобальному времени t (скат crossfadeT центрирован на
-// границе раздела — сумма соседей держится около единицы), вжухи пролётов
-// триггерятся на смене сегментов с громкостью и питчем от скорости скролла.
-// Контекст создаётся только после жеста пользователя (политика автоплея),
-// буферы грузятся лениво после разблокировки.
+// и музыкальная подложка переливаются по глобальному времени t (скат
+// crossfadeT центрирован на границе раздела), голосовые реплики играют
+// один раз на входе в раздел с дакингом фона. Контекст создаётся только
+// после жеста пользователя (политика автоплея), буферы грузятся лениво.
 export class FilmSound {
   private ctx: AudioContext | null = null;
   private master: GainNode | null = null;
+  // Шина фона (эмбиенты + музыка): приглушается под голосом
+  private bedsBus: GainNode | null = null;
   private bedGains = new Map<string, GainNode>();
   private buffers = new Map<string, AudioBuffer>();
   private loading = new Set<string>();
@@ -16,6 +17,20 @@ export class FilmSound {
   private enabled = true;
   private lastWhooshAt = 0;
   private whooshIdx = 0;
+  // Голос: сыгранные разделы, текущий источник, отложенный до буфера/жеста
+  private voiceSrcBySection = new Map(
+    SOUND.voice.map((v) => [v.section as string, v.src]),
+  );
+  private voPlayed = new Set<string>();
+  private voCurrent: AudioBufferSourceNode | null = null;
+  private pendingVoice: string | null = null;
+
+  // Музыка — обычный слой с окном во весь фильм
+  private allBeds: SoundBed[] = [
+    ...SOUND.beds,
+    ...SOUND.extras,
+    { id: "music", src: SOUND.music.src, fromT: -999, toT: 999, gain: SOUND.music.gain },
+  ];
 
   unlock() {
     if (this.ctx) {
@@ -31,8 +46,12 @@ export class FilmSound {
     this.master = this.ctx.createGain();
     this.master.gain.value = this.enabled ? SOUND.masterGain : 0;
     this.master.connect(this.ctx.destination);
-    for (const bed of [...SOUND.beds, ...SOUND.extras]) this.load(bed.src);
+    this.bedsBus = this.ctx.createGain();
+    this.bedsBus.gain.value = 1;
+    this.bedsBus.connect(this.master);
+    for (const bed of this.allBeds) this.load(bed.src);
     for (const src of SOUND.whooshes) this.load(src);
+    for (const src of this.voiceSrcBySection.values()) this.load(src);
   }
 
   private load(src: string) {
@@ -52,12 +71,12 @@ export class FilmSound {
   // Точки лупа сдвинуты внутрь: mp3-кодек добавляет тишину по краям
   // (encoder delay), на бесшовных дронах внутренний шов не слышен.
   private ensureBed(bed: SoundBed) {
-    if (!this.ctx || !this.master || this.started.has(bed.id)) return;
+    if (!this.ctx || !this.bedsBus || this.started.has(bed.id)) return;
     const buf = this.buffers.get(bed.src);
     if (!buf) return;
     const gain = this.ctx.createGain();
     gain.gain.value = 0;
-    gain.connect(this.master);
+    gain.connect(this.bedsBus);
     const node = this.ctx.createBufferSource();
     node.buffer = buf;
     node.loop = true;
@@ -74,7 +93,7 @@ export class FilmSound {
   update(t: number) {
     if (!this.ctx || !this.master) return;
     const fade = SOUND.crossfadeT;
-    for (const bed of [...SOUND.beds, ...SOUND.extras]) {
+    for (const bed of this.allBeds) {
       this.ensureBed(bed);
       const gain = this.bedGains.get(bed.id);
       if (!gain) continue;
@@ -84,11 +103,55 @@ export class FilmSound {
         Math.max(0, Math.min(1, Math.min(inRamp, outRamp))) * bed.gain;
       gain.gain.setTargetAtTime(target, this.ctx.currentTime, 0.25);
     }
+    // Реплика, ждавшая буфер или разблокировку
+    if (this.pendingVoice) this.voice(this.pendingVoice);
   }
 
-  // Вжух пролёта на смене сегмента: громкость и питч от скорости скролла,
-  // кулдаун гасит очередь от джиттера у границы
+  // Презентационная реплика раздела: один раз за сессию, фон приглушается
+  voice(section: string) {
+    const src = this.voiceSrcBySection.get(section);
+    if (!src || this.voPlayed.has(section)) {
+      if (this.pendingVoice === section) this.pendingVoice = null;
+      return;
+    }
+    if (!this.ctx || !this.master || !this.bedsBus) {
+      this.pendingVoice = section;
+      return;
+    }
+    const buf = this.buffers.get(src);
+    if (!buf) {
+      this.pendingVoice = section;
+      return;
+    }
+    this.pendingVoice = null;
+    this.voPlayed.add(section);
+    this.voCurrent?.stop();
+    const gain = this.ctx.createGain();
+    gain.gain.value = 1;
+    gain.connect(this.master);
+    const node = this.ctx.createBufferSource();
+    node.buffer = buf;
+    node.connect(gain);
+    this.bedsBus.gain.setTargetAtTime(
+      SOUND.voiceDuck,
+      this.ctx.currentTime,
+      0.3,
+    );
+    node.onended = () => {
+      gain.disconnect();
+      // Дакинг снимает только последняя живая реплика
+      if (this.voCurrent === node && this.ctx && this.bedsBus) {
+        this.voCurrent = null;
+        this.bedsBus.gain.setTargetAtTime(1, this.ctx.currentTime, 0.5);
+      }
+    };
+    node.start();
+    this.voCurrent = node;
+  }
+
+  // Вжух пролёта на смене сегмента: выключен пустым списком в конфиге
   junction(velocity: number) {
+    if (!SOUND.whooshes.length) return;
     if (!this.ctx || !this.master || !this.enabled) return;
     const now = performance.now();
     if (now - this.lastWhooshAt < SOUND.whooshCooldownMs) return;
@@ -133,6 +196,7 @@ export class FilmSound {
     this.ctx?.close().catch(() => {});
     this.ctx = null;
     this.master = null;
+    this.bedsBus = null;
     this.bedGains.clear();
     this.buffers.clear();
     this.started.clear();

@@ -308,18 +308,38 @@ export const SOUND = {
   crossfadeT: 3,
   beds: [
     { id: "orbit", src: "/audio/amb_orbit.mp3", fromT: -3, toT: 24, gain: 0.9 },
-    { id: "steel", src: "/audio/amb_steel.mp3", fromT: 24, toT: 40, gain: 0.75 },
+    { id: "steel", src: "/audio/amb_steel.mp3", fromT: 24, toT: 40, gain: 0.6 },
     { id: "hangar", src: "/audio/amb_hangar.mp3", fromT: 40, toT: 72, gain: 0.85 },
     { id: "dawn", src: "/audio/amb_dawn.mp3", fromT: 72, toT: 112, gain: 0.75 },
     { id: "bright", src: "/audio/amb_bright.mp3", fromT: 112, toT: 139, gain: 0.65 },
     { id: "orbitEnd", src: "/audio/amb_orbit.mp3", fromT: 139, toT: 158, gain: 0.9 },
   ] as SoundBed[],
+  // Конкретика поверх эмбиентов: дождь двора поставки (V04-V05), работа
+  // механизмов в мастерских, гул трансформатора в ангаре
   extras: [
+    { id: "rain", src: "/audio/amb_rain.mp3", fromT: 25, toT: 41, gain: 0.55 },
+    { id: "mech", src: "/audio/amb_machines.mp3", fromT: 24, toT: 40, gain: 0.28 },
     { id: "hum", src: "/audio/hum_transformer.mp3", fromT: 43, toT: 70, gain: 0.32 },
   ] as SoundBed[],
-  whooshes: ["/audio/whoosh_a.mp3", "/audio/whoosh_b.mp3", "/audio/whoosh_c.mp3"],
+  // Музыкальная подложка на весь фильм, тихо под эмбиентами (Eleven Music)
+  music: { src: "/audio/music_bed.mp3", gain: 0.32 },
+  // Вжухи на сменах сегментов отключены решением пользователя («не в
+  // тему»); пустой список = выключено, механика в движке сохранена
+  whooshes: [] as string[],
   whooshGain: 0.5,
   whooshCooldownMs: 450,
+  // Голос: презентационная реплика на входе в раздел, один раз за сессию.
+  // Текст собран из формулировок сайта; диктор ElevenLabs multilingual v2
+  voice: [
+    { section: "prologue", src: "/audio/vo_prologue.mp3" },
+    { section: "solutions", src: "/audio/vo_solutions.mp3" },
+    { section: "equipment", src: "/audio/vo_equipment.mp3" },
+    { section: "expertise", src: "/audio/vo_expertise.mp3" },
+    { section: "quality", src: "/audio/vo_quality.mp3" },
+    { section: "epilogue", src: "/audio/vo_epilogue.mp3" },
+  ] as { section: FilmSectionId; src: string }[],
+  // Дакинг фона под голосом
+  voiceDuck: 0.4,
 };
 
 // Титры фаз идут поверх движения, в моменты тихого заполнения проёма

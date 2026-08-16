@@ -369,6 +369,8 @@ export default function FilmStage({ media }: { media?: MediaAvailability }) {
     let lastT = 0;
     let lastActiveStep = FRAME_STEP;
     let lastSeekStamp = 0;
+    // Голос: реплика на входе в раздел (движок сам не повторяет сыгранные)
+    let lastVoiceSection = -1;
 
     const applyScroll = () => {
       if (!vhUnit) return;
@@ -667,6 +669,10 @@ export default function FilmStage({ media }: { media?: MediaAvailability }) {
           sectionIndex = i;
           break;
         }
+      }
+      if (sectionIndex !== lastVoiceSection) {
+        lastVoiceSection = sectionIndex;
+        sound.voice(FILM_SECTIONS[sectionIndex].id);
       }
       // Ручной скролл без нажатия Play прячет кнопку навсегда (мутация
       // ref до setState — защита от повторных вызовов из rAF до ре-рендера)
