@@ -13,6 +13,12 @@ export class FilmSound {
   private bedGains = new Map<string, GainNode>();
   private buffers = new Map<string, AudioBuffer>();
   private loading = new Set<string>();
+  // Сетевые байты, скачанные ДО жеста (fetch не требует разблокировки):
+  // на unlock остаётся только декод — без сетевого бурста в момент,
+  // когда пользователь начинает скроллить
+  private rawBytes = new Map<string, Promise<ArrayBuffer>>();
+  // Декоды идут цепочкой, а не все разом — без затыка главного потока
+  private decodeChain: Promise<void> = Promise.resolve();
   private started = new Set<string>();
   private enabled = true;
   private lastWhooshAt = 0;
@@ -52,17 +58,39 @@ export class FilmSound {
     for (const src of this.voiceSrcById.values()) this.load(src);
   }
 
+  // Скачивание всех аудиофайлов заранее, без AudioContext и жеста.
+  // Вызывается сразу после маунта фильма.
+  prefetch() {
+    const srcs = [
+      ...this.allBeds.map((b) => b.src),
+      ...SOUND.whooshes,
+      ...this.voiceSrcById.values(),
+    ];
+    for (const src of srcs) {
+      if (this.rawBytes.has(src)) continue;
+      this.rawBytes.set(
+        src,
+        fetch(src).then((r) => r.arrayBuffer()),
+      );
+    }
+  }
+
   private load(src: string) {
     if (!this.ctx || this.buffers.has(src) || this.loading.has(src)) return;
     this.loading.add(src);
-    fetch(src)
-      .then((r) => r.arrayBuffer())
-      .then((ab) => this.ctx!.decodeAudioData(ab))
+    const bytes =
+      this.rawBytes.get(src) ?? fetch(src).then((r) => r.arrayBuffer());
+    this.rawBytes.set(src, bytes);
+    this.decodeChain = this.decodeChain
+      .then(() => bytes)
+      .then((ab) => this.ctx!.decodeAudioData(ab.slice(0)))
       .then((buf) => {
         this.buffers.set(src, buf);
         this.loading.delete(src);
       })
-      .catch(() => this.loading.delete(src));
+      .catch(() => {
+        this.loading.delete(src);
+      });
   }
 
   // Луп-слой стартует при первом появлении буфера на нулевой громкости.
