@@ -246,6 +246,10 @@ export default function FilmStage({ media }: { media?: MediaAvailability }) {
     const sound = new FilmSound();
     soundRef.current = sound;
     sound.setEnabled(soundOnRef.current);
+    // Аудио скачивается сразу (~5МБ, сеть не требует жеста): на первом
+    // жесте останется только декод — без сетевого бурста в момент,
+    // когда пользователь начинает скроллить
+    sound.prefetch();
     const gestureEvents = ["pointerdown", "touchstart", "keydown", "wheel"] as const;
     const onFirstGesture = () => {
       sound.unlock();
@@ -263,6 +267,30 @@ export default function FilmStage({ media }: { media?: MediaAvailability }) {
       vhUnit = (wrap.offsetHeight - stage.offsetHeight) / totalVh;
     };
     window.addEventListener("resize", onResize);
+
+    // Полный фоновый прогрев фильма: после старта все видеофайлы
+    // дотягиваются ПОСЛЕДОВАТЕЛЬНО в HTTP-кэш — дальше окно
+    // предзагрузки берёт данные с диска, холодных сегментов при скролле
+    // нет. Старт с задержкой, чтобы не конкурировать с активным окном;
+    // Save-Data отключает прогрев (экономия мобильного трафика).
+    const warmAbort = new AbortController();
+    const warmTimer = window.setTimeout(async () => {
+      const saveData = (
+        navigator as { connection?: { saveData?: boolean } }
+      ).connection?.saveData;
+      if (saveData) return;
+      const urls = Array.from(
+        stage.querySelectorAll<HTMLSourceElement>("video source"),
+      ).map((el) => el.src);
+      for (const url of urls) {
+        if (warmAbort.signal.aborted) return;
+        try {
+          await fetch(url, { signal: warmAbort.signal });
+        } catch {
+          return;
+        }
+      }
+    }, 3000);
 
     let lastPosVh = -1;
     // Отложенная подмена: реально видимый сегмент может отставать от
@@ -894,6 +922,8 @@ export default function FilmStage({ media }: { media?: MediaAvailability }) {
       window.removeEventListener("resize", onResize);
       window.removeEventListener("pageshow", onPageShow);
       document.removeEventListener("visibilitychange", onVisibility);
+      window.clearTimeout(warmTimer);
+      warmAbort.abort();
       gestureEvents.forEach((ev) =>
         window.removeEventListener(ev, onFirstGesture),
       );
